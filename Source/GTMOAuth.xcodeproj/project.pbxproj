@@ -1,0 +1,643 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 45;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4F24484B121F2E5C00FEE1DA /* GTMOAuthAuthentication.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F244848121F2E5C00FEE1DA /* GTMOAuthAuthentication.m */; };
+		4F24484C121F2E5C00FEE1DA /* GTMOAuthSignIn.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F24484A121F2E5C00FEE1DA /* GTMOAuthSignIn.m */; };
+		4F24484F121F2E6300FEE1DA /* GTMOAuthViewControllerTouch.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F24484E121F2E6300FEE1DA /* GTMOAuthViewControllerTouch.m */; };
+		4F24491A121F370000FEE1DA /* GTMHTTPFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F244919121F370000FEE1DA /* GTMHTTPFetcher.m */; };
+		4F72464212235C90001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F72464112235C90001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m */; };
+		4F7249B3122483C6001A4AD0 /* GTMOAuthViewControllerTouch.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F24484E121F2E6300FEE1DA /* GTMOAuthViewControllerTouch.m */; };
+		4F7249B5122483C6001A4AD0 /* GTMOAuthAuthentication.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F244848121F2E5C00FEE1DA /* GTMOAuthAuthentication.m */; };
+		4F7249B7122483C6001A4AD0 /* GTMOAuthSignIn.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F24484A121F2E5C00FEE1DA /* GTMOAuthSignIn.m */; };
+		4F7249BA122483C6001A4AD0 /* GTMHTTPFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F244919121F370000FEE1DA /* GTMHTTPFetcher.m */; };
+		4F7249CA12248443001A4AD0 /* GTMOAuthLatitudeViewControllerTouch.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F7249C712248443001A4AD0 /* GTMOAuthLatitudeViewControllerTouch.m */; };
+		4F7249D112248449001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F7249CE12248449001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m */; };
+		4F7249FD122485EE001A4AD0 /* GTMOAuthWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 4F7249F9122485EE001A4AD0 /* GTMOAuthWindow.xib */; };
+		4F7249FE122485EE001A4AD0 /* GTMOAuthWindowController.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F7249FB122485EE001A4AD0 /* GTMOAuthWindowController.m */; };
+		4F724A9012248CF5001A4AD0 /* GTMOAuthAuthentication.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F244848121F2E5C00FEE1DA /* GTMOAuthAuthentication.m */; };
+		4F724A9212248CF5001A4AD0 /* GTMOAuthSignIn.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F24484A121F2E5C00FEE1DA /* GTMOAuthSignIn.m */; };
+		4F724A9412248CF5001A4AD0 /* GTMHTTPFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F244919121F370000FEE1DA /* GTMHTTPFetcher.m */; };
+		4F724AB812248D6B001A4AD0 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F724AB512248D6B001A4AD0 /* Security.framework */; };
+		4F724ABA12248D6B001A4AD0 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F724AB712248D6B001A4AD0 /* SystemConfiguration.framework */; };
+		4F724B1C12248D72001A4AD0 /* SenTestingKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F724AB612248D6B001A4AD0 /* SenTestingKit.framework */; };
+		4F724BAA12248F75001A4AD0 /* GTMHTTPFetchHistory.h in Headers */ = {isa = PBXBuildFile; fileRef = 4F724BA812248F75001A4AD0 /* GTMHTTPFetchHistory.h */; };
+		4F724BAB12248F75001A4AD0 /* GTMHTTPFetchHistory.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F724BA912248F75001A4AD0 /* GTMHTTPFetchHistory.m */; };
+		4F724BAC12248F75001A4AD0 /* GTMHTTPFetchHistory.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F724BA912248F75001A4AD0 /* GTMHTTPFetchHistory.m */; };
+		4F724BAF12248F81001A4AD0 /* GTMHTTPFetcherLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = 4F724BAD12248F81001A4AD0 /* GTMHTTPFetcherLogging.h */; };
+		4F724BB012248F81001A4AD0 /* GTMHTTPFetcherLogging.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F724BAE12248F81001A4AD0 /* GTMHTTPFetcherLogging.m */; };
+		4F724BB112248F81001A4AD0 /* GTMHTTPFetcherLogging.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F724BAE12248F81001A4AD0 /* GTMHTTPFetcherLogging.m */; };
+		4F724BD712248F9E001A4AD0 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F724AB712248D6B001A4AD0 /* SystemConfiguration.framework */; };
+		4F724C1A12248FAB001A4AD0 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F724AB512248D6B001A4AD0 /* Security.framework */; };
+		4F724C73122494D4001A4AD0 /* GTMOAuthTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F724C72122494D4001A4AD0 /* GTMOAuthTest.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4F74854A1145D6DA00DD661A /* Copy Static Library Files */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = GDataOAuth;
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			name = "Copy Static Library Files";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		4F244847121F2E5C00FEE1DA /* GTMOAuthAuthentication.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMOAuthAuthentication.h; sourceTree = "<group>"; };
+		4F244848121F2E5C00FEE1DA /* GTMOAuthAuthentication.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTMOAuthAuthentication.m; sourceTree = "<group>"; };
+		4F244849121F2E5C00FEE1DA /* GTMOAuthSignIn.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMOAuthSignIn.h; sourceTree = "<group>"; };
+		4F24484A121F2E5C00FEE1DA /* GTMOAuthSignIn.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTMOAuthSignIn.m; sourceTree = "<group>"; };
+		4F24484D121F2E6300FEE1DA /* GTMOAuthViewControllerTouch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GTMOAuthViewControllerTouch.h; path = Touch/GTMOAuthViewControllerTouch.h; sourceTree = "<group>"; };
+		4F24484E121F2E6300FEE1DA /* GTMOAuthViewControllerTouch.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMOAuthViewControllerTouch.m; path = Touch/GTMOAuthViewControllerTouch.m; sourceTree = "<group>"; };
+		4F244850121F2E6800FEE1DA /* GTMOAuthViewTouch.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = GTMOAuthViewTouch.xib; path = Touch/GTMOAuthViewTouch.xib; sourceTree = "<group>"; };
+		4F244918121F370000FEE1DA /* GTMHTTPFetcher.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GTMHTTPFetcher.h; path = ../HTTPFetcher/GTMHTTPFetcher.h; sourceTree = SOURCE_ROOT; };
+		4F244919121F370000FEE1DA /* GTMHTTPFetcher.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMHTTPFetcher.m; path = ../HTTPFetcher/GTMHTTPFetcher.m; sourceTree = SOURCE_ROOT; };
+		4F72464012235C90001A4AD0 /* GTMOAuthBuzzViewControllerTouch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GTMOAuthBuzzViewControllerTouch.h; path = Services/Buzz/GTMOAuthBuzzViewControllerTouch.h; sourceTree = "<group>"; };
+		4F72464112235C90001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMOAuthBuzzViewControllerTouch.m; path = Services/Buzz/GTMOAuthBuzzViewControllerTouch.m; sourceTree = "<group>"; };
+		4F7249AD122483B8001A4AD0 /* UnitTests.octest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UnitTests.octest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4F7249AE122483B8001A4AD0 /* UnitTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "UnitTests-Info.plist"; sourceTree = "<group>"; };
+		4F7249C612248443001A4AD0 /* GTMOAuthLatitudeViewControllerTouch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMOAuthLatitudeViewControllerTouch.h; sourceTree = "<group>"; };
+		4F7249C712248443001A4AD0 /* GTMOAuthLatitudeViewControllerTouch.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTMOAuthLatitudeViewControllerTouch.m; sourceTree = "<group>"; };
+		4F7249C812248443001A4AD0 /* GTMOAuthLatitudeWindowController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMOAuthLatitudeWindowController.h; sourceTree = "<group>"; };
+		4F7249C912248443001A4AD0 /* GTMOAuthLatitudeWindowController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTMOAuthLatitudeWindowController.m; sourceTree = "<group>"; };
+		4F7249CD12248449001A4AD0 /* GTMOAuthBuzzViewControllerTouch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMOAuthBuzzViewControllerTouch.h; sourceTree = "<group>"; };
+		4F7249CE12248449001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTMOAuthBuzzViewControllerTouch.m; sourceTree = "<group>"; };
+		4F7249CF12248449001A4AD0 /* GTMOAuthBuzzWindowController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMOAuthBuzzWindowController.h; sourceTree = "<group>"; };
+		4F7249D012248449001A4AD0 /* GTMOAuthBuzzWindowController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTMOAuthBuzzWindowController.m; sourceTree = "<group>"; };
+		4F7249F9122485EE001A4AD0 /* GTMOAuthWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = GTMOAuthWindow.xib; path = Mac/GTMOAuthWindow.xib; sourceTree = "<group>"; };
+		4F7249FA122485EE001A4AD0 /* GTMOAuthWindowController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GTMOAuthWindowController.h; path = Mac/GTMOAuthWindowController.h; sourceTree = "<group>"; };
+		4F7249FB122485EE001A4AD0 /* GTMOAuthWindowController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMOAuthWindowController.m; path = Mac/GTMOAuthWindowController.m; sourceTree = "<group>"; };
+		4F724A0512248635001A4AD0 /* GTMOAuth.framework-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GTMOAuth.framework-Info.plist"; sourceTree = "<group>"; };
+		4F724AB512248D6B001A4AD0 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = /System/Library/Frameworks/Security.framework; sourceTree = "<absolute>"; };
+		4F724AB612248D6B001A4AD0 /* SenTestingKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SenTestingKit.framework; path = Library/Frameworks/SenTestingKit.framework; sourceTree = DEVELOPER_DIR; };
+		4F724AB712248D6B001A4AD0 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = /System/Library/Frameworks/SystemConfiguration.framework; sourceTree = "<absolute>"; };
+		4F724BA812248F75001A4AD0 /* GTMHTTPFetchHistory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GTMHTTPFetchHistory.h; path = "../../gtm-http-fetcher/Source/GTMHTTPFetchHistory.h"; sourceTree = SOURCE_ROOT; };
+		4F724BA912248F75001A4AD0 /* GTMHTTPFetchHistory.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMHTTPFetchHistory.m; path = "../../gtm-http-fetcher/Source/GTMHTTPFetchHistory.m"; sourceTree = SOURCE_ROOT; };
+		4F724BAD12248F81001A4AD0 /* GTMHTTPFetcherLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GTMHTTPFetcherLogging.h; path = "../../gtm-http-fetcher/Source/GTMHTTPFetcherLogging.h"; sourceTree = SOURCE_ROOT; };
+		4F724BAE12248F81001A4AD0 /* GTMHTTPFetcherLogging.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMHTTPFetcherLogging.m; path = "../../gtm-http-fetcher/Source/GTMHTTPFetcherLogging.m"; sourceTree = SOURCE_ROOT; };
+		4F724C72122494D4001A4AD0 /* GTMOAuthTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMOAuthTest.m; path = Test/GTMOAuthTest.m; sourceTree = "<group>"; };
+		D2AAC07E0554694100DB518D /* libOAuthTouch.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libOAuthTouch.a; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4F7249AA122483B8001A4AD0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F724B1C12248D72001A4AD0 /* SenTestingKit.framework in Frameworks */,
+				4F724BD712248F9E001A4AD0 /* SystemConfiguration.framework in Frameworks */,
+				4F724C1A12248FAB001A4AD0 /* Security.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F724A6F12248B19001A4AD0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F724AB812248D6B001A4AD0 /* Security.framework in Frameworks */,
+				4F724ABA12248D6B001A4AD0 /* SystemConfiguration.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D2AAC07C0554694100DB518D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		034768DFFF38A50411DB9C8B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D2AAC07E0554694100DB518D /* libOAuthTouch.a */,
+				4F7249AD122483B8001A4AD0 /* UnitTests.octest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0867D691FE84028FC02AAC07 /* OAuthTouchStaticLibrary */ = {
+			isa = PBXGroup;
+			children = (
+				4F7249C012248423001A4AD0 /* Sources */,
+				4F724C76122494DC001A4AD0 /* Tests */,
+				034768DFFF38A50411DB9C8B /* Products */,
+				4F724AA112248D35001A4AD0 /* Libraries */,
+				4F7249AE122483B8001A4AD0 /* UnitTests-Info.plist */,
+				4F724A0512248635001A4AD0 /* GTMOAuth.framework-Info.plist */,
+			);
+			name = OAuthTouchStaticLibrary;
+			sourceTree = "<group>";
+		};
+		4F72462612235BC9001A4AD0 /* Google Services with non-standard endpoints */ = {
+			isa = PBXGroup;
+			children = (
+				4F7249CC12248449001A4AD0 /* Buzz */,
+				4F7249C512248443001A4AD0 /* Latitude */,
+				4F72462712235BD0001A4AD0 /* Buzz */,
+			);
+			name = "Google Services with non-standard endpoints";
+			sourceTree = "<group>";
+		};
+		4F72462712235BD0001A4AD0 /* Buzz */ = {
+			isa = PBXGroup;
+			children = (
+				4F72464012235C90001A4AD0 /* GTMOAuthBuzzViewControllerTouch.h */,
+				4F72464112235C90001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m */,
+			);
+			name = Buzz;
+			sourceTree = "<group>";
+		};
+		4F7249C012248423001A4AD0 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				4F244847121F2E5C00FEE1DA /* GTMOAuthAuthentication.h */,
+				4F244848121F2E5C00FEE1DA /* GTMOAuthAuthentication.m */,
+				4F244849121F2E5C00FEE1DA /* GTMOAuthSignIn.h */,
+				4F24484A121F2E5C00FEE1DA /* GTMOAuthSignIn.m */,
+				4F7249F2122485AC001A4AD0 /* Touch */,
+				4F7249F3122485B2001A4AD0 /* Mac */,
+				4F72462612235BC9001A4AD0 /* Google Services with non-standard endpoints */,
+				4F724BA712248F62001A4AD0 /* HTTPFetcher */,
+			);
+			name = Sources;
+			sourceTree = "<group>";
+		};
+		4F7249C512248443001A4AD0 /* Latitude */ = {
+			isa = PBXGroup;
+			children = (
+				4F7249C612248443001A4AD0 /* GTMOAuthLatitudeViewControllerTouch.h */,
+				4F7249C712248443001A4AD0 /* GTMOAuthLatitudeViewControllerTouch.m */,
+				4F7249C812248443001A4AD0 /* GTMOAuthLatitudeWindowController.h */,
+				4F7249C912248443001A4AD0 /* GTMOAuthLatitudeWindowController.m */,
+			);
+			name = Latitude;
+			path = Services/Latitude;
+			sourceTree = "<group>";
+		};
+		4F7249CC12248449001A4AD0 /* Buzz */ = {
+			isa = PBXGroup;
+			children = (
+				4F7249CD12248449001A4AD0 /* GTMOAuthBuzzViewControllerTouch.h */,
+				4F7249CE12248449001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m */,
+				4F7249CF12248449001A4AD0 /* GTMOAuthBuzzWindowController.h */,
+				4F7249D012248449001A4AD0 /* GTMOAuthBuzzWindowController.m */,
+			);
+			name = Buzz;
+			path = Services/Buzz;
+			sourceTree = "<group>";
+		};
+		4F7249F2122485AC001A4AD0 /* Touch */ = {
+			isa = PBXGroup;
+			children = (
+				4F24484D121F2E6300FEE1DA /* GTMOAuthViewControllerTouch.h */,
+				4F24484E121F2E6300FEE1DA /* GTMOAuthViewControllerTouch.m */,
+				4F244850121F2E6800FEE1DA /* GTMOAuthViewTouch.xib */,
+			);
+			name = Touch;
+			sourceTree = "<group>";
+		};
+		4F7249F3122485B2001A4AD0 /* Mac */ = {
+			isa = PBXGroup;
+			children = (
+				4F7249F9122485EE001A4AD0 /* GTMOAuthWindow.xib */,
+				4F7249FA122485EE001A4AD0 /* GTMOAuthWindowController.h */,
+				4F7249FB122485EE001A4AD0 /* GTMOAuthWindowController.m */,
+			);
+			name = Mac;
+			sourceTree = "<group>";
+		};
+		4F724AA112248D35001A4AD0 /* Libraries */ = {
+			isa = PBXGroup;
+			children = (
+				4F724AB612248D6B001A4AD0 /* SenTestingKit.framework */,
+				4F724AB512248D6B001A4AD0 /* Security.framework */,
+				4F724AB712248D6B001A4AD0 /* SystemConfiguration.framework */,
+			);
+			name = Libraries;
+			sourceTree = "<group>";
+		};
+		4F724BA712248F62001A4AD0 /* HTTPFetcher */ = {
+			isa = PBXGroup;
+			children = (
+				4F244918121F370000FEE1DA /* GTMHTTPFetcher.h */,
+				4F244919121F370000FEE1DA /* GTMHTTPFetcher.m */,
+				4F724BA812248F75001A4AD0 /* GTMHTTPFetchHistory.h */,
+				4F724BA912248F75001A4AD0 /* GTMHTTPFetchHistory.m */,
+				4F724BAD12248F81001A4AD0 /* GTMHTTPFetcherLogging.h */,
+				4F724BAE12248F81001A4AD0 /* GTMHTTPFetcherLogging.m */,
+			);
+			name = HTTPFetcher;
+			sourceTree = "<group>";
+		};
+		4F724C76122494DC001A4AD0 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				4F724C72122494D4001A4AD0 /* GTMOAuthTest.m */,
+			);
+			name = Tests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		4F724A6C12248B19001A4AD0 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F724BAA12248F75001A4AD0 /* GTMHTTPFetchHistory.h in Headers */,
+				4F724BAF12248F81001A4AD0 /* GTMHTTPFetcherLogging.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		4F7249AC122483B8001A4AD0 /* UnitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4F7249B1122483B8001A4AD0 /* Build configuration list for PBXNativeTarget "UnitTests" */;
+			buildPhases = (
+				4F7249A8122483B8001A4AD0 /* Resources */,
+				4F7249A9122483B8001A4AD0 /* Sources */,
+				4F7249AA122483B8001A4AD0 /* Frameworks */,
+				4F7249AB122483B8001A4AD0 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = UnitTests;
+			productName = UnitTests;
+			productReference = 4F7249AD122483B8001A4AD0 /* UnitTests.octest */;
+			productType = "com.apple.product-type.bundle";
+		};
+		4F724A7012248B19001A4AD0 /* GTMOAuth.framework */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4F724A7412248B19001A4AD0 /* Build configuration list for PBXNativeTarget "GTMOAuth.framework" */;
+			buildPhases = (
+				4F724A6C12248B19001A4AD0 /* Headers */,
+				4F724A6D12248B19001A4AD0 /* Resources */,
+				4F724A6E12248B19001A4AD0 /* Sources */,
+				4F724A6F12248B19001A4AD0 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GTMOAuth.framework;
+			productName = OAuth.framework;
+			productType = "com.apple.product-type.framework";
+		};
+		D2AAC07D0554694100DB518D /* OAuthTouchStaticLib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DEB921E08733DC00010E9CD /* Build configuration list for PBXNativeTarget "OAuthTouchStaticLib" */;
+			buildPhases = (
+				4F74854A1145D6DA00DD661A /* Copy Static Library Files */,
+				D2AAC07B0554694100DB518D /* Sources */,
+				D2AAC07C0554694100DB518D /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OAuthTouchStaticLib;
+			productName = OAuthTouchStaticLibrary;
+			productReference = D2AAC07E0554694100DB518D /* libOAuthTouch.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0867D690FE84028FC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB922208733DC00010E9CD /* Build configuration list for PBXProject "GTMOAuth" */;
+			compatibilityVersion = "Xcode 3.1";
+			hasScannedForEncodings = 1;
+			mainGroup = 0867D691FE84028FC02AAC07 /* OAuthTouchStaticLibrary */;
+			productRefGroup = 034768DFFF38A50411DB9C8B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D2AAC07D0554694100DB518D /* OAuthTouchStaticLib */,
+				4F724A7012248B19001A4AD0 /* GTMOAuth.framework */,
+				4F7249AC122483B8001A4AD0 /* UnitTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4F7249A8122483B8001A4AD0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F7249FD122485EE001A4AD0 /* GTMOAuthWindow.xib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F724A6D12248B19001A4AD0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		4F7249AB122483B8001A4AD0 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Run the unit tests in this test bundle.\n\"${SYSTEM_DEVELOPER_DIR}/Tools/RunUnitTests\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4F7249A9122483B8001A4AD0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F7249B3122483C6001A4AD0 /* GTMOAuthViewControllerTouch.m in Sources */,
+				4F7249B5122483C6001A4AD0 /* GTMOAuthAuthentication.m in Sources */,
+				4F7249B7122483C6001A4AD0 /* GTMOAuthSignIn.m in Sources */,
+				4F7249BA122483C6001A4AD0 /* GTMHTTPFetcher.m in Sources */,
+				4F7249FE122485EE001A4AD0 /* GTMOAuthWindowController.m in Sources */,
+				4F724BAC12248F75001A4AD0 /* GTMHTTPFetchHistory.m in Sources */,
+				4F724BB112248F81001A4AD0 /* GTMHTTPFetcherLogging.m in Sources */,
+				4F724C73122494D4001A4AD0 /* GTMOAuthTest.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F724A6E12248B19001A4AD0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F724A9012248CF5001A4AD0 /* GTMOAuthAuthentication.m in Sources */,
+				4F724A9212248CF5001A4AD0 /* GTMOAuthSignIn.m in Sources */,
+				4F724A9412248CF5001A4AD0 /* GTMHTTPFetcher.m in Sources */,
+				4F724BAB12248F75001A4AD0 /* GTMHTTPFetchHistory.m in Sources */,
+				4F724BB012248F81001A4AD0 /* GTMHTTPFetcherLogging.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D2AAC07B0554694100DB518D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F24484B121F2E5C00FEE1DA /* GTMOAuthAuthentication.m in Sources */,
+				4F24484C121F2E5C00FEE1DA /* GTMOAuthSignIn.m in Sources */,
+				4F24484F121F2E6300FEE1DA /* GTMOAuthViewControllerTouch.m in Sources */,
+				4F24491A121F370000FEE1DA /* GTMHTTPFetcher.m in Sources */,
+				4F72464212235C90001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m in Sources */,
+				4F7249CA12248443001A4AD0 /* GTMOAuthLatitudeViewControllerTouch.m in Sources */,
+				4F7249D112248449001A4AD0 /* GTMOAuthBuzzViewControllerTouch.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB921F08733DC00010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				COPY_PHASE_STRIP = NO;
+				DSTROOT = /tmp/OAuthTouchStaticLibrary.dst;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				INSTALL_PATH = /usr/local/lib;
+				PRODUCT_NAME = OAuthTouch;
+				SDKROOT = iphoneos3.2;
+			};
+			name = Debug;
+		};
+		1DEB922008733DC00010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				DSTROOT = /tmp/OAuthTouchStaticLibrary.dst;
+				GCC_MODEL_TUNING = G5;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				INSTALL_PATH = /usr/local/lib;
+				PRODUCT_NAME = OAuthTouch;
+				SDKROOT = iphoneos3.2;
+			};
+			name = Release;
+		};
+		1DEB922308733DC00010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				OTHER_CFLAGS = "-DDEBUG=1";
+				OTHER_LDFLAGS = "-ObjC";
+				PREBINDING = NO;
+				SDKROOT = iphoneos3.2;
+			};
+			name = Debug;
+		};
+		1DEB922408733DC00010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				OTHER_LDFLAGS = "-ObjC";
+				PREBINDING = NO;
+				SDKROOT = iphoneos3.2;
+			};
+			name = Release;
+		};
+		4F7249AF122483B8001A4AD0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				FRAMEWORK_SEARCH_PATHS = "$(DEVELOPER_LIBRARY_DIR)/Frameworks";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Cocoa.framework/Headers/Cocoa.h";
+				INFOPLIST_FILE = "UnitTests-Info.plist";
+				INSTALL_PATH = "$(USER_LIBRARY_DIR)/Bundles";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Cocoa,
+					"-framework",
+					SenTestingKit,
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = UnitTests;
+				SDKROOT = macosx10.6;
+				WRAPPER_EXTENSION = octest;
+			};
+			name = Debug;
+		};
+		4F7249B0122483B8001A4AD0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				FRAMEWORK_SEARCH_PATHS = "$(DEVELOPER_LIBRARY_DIR)/Frameworks";
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Cocoa.framework/Headers/Cocoa.h";
+				INFOPLIST_FILE = "UnitTests-Info.plist";
+				INSTALL_PATH = "$(USER_LIBRARY_DIR)/Bundles";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Cocoa,
+					"-framework",
+					SenTestingKit,
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = UnitTests;
+				SDKROOT = macosx10.6;
+				WRAPPER_EXTENSION = octest;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		4F724A7212248B19001A4AD0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(DEVELOPER_FRAMEWORKS_DIR)\"",
+				);
+				FRAMEWORK_VERSION = A;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
+				INFOPLIST_FILE = "GTMOAuth.framework-Info.plist";
+				INSTALL_PATH = "$(HOME)/Library/Frameworks";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Foundation,
+					"-framework",
+					AppKit,
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GTMOAuth;
+				SDKROOT = macosx10.6;
+			};
+			name = Debug;
+		};
+		4F724A7312248B19001A4AD0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(DEVELOPER_FRAMEWORKS_DIR)\"",
+				);
+				FRAMEWORK_VERSION = A;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
+				INFOPLIST_FILE = "GTMOAuth.framework-Info.plist";
+				INSTALL_PATH = "$(HOME)/Library/Frameworks";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Foundation,
+					"-framework",
+					AppKit,
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GTMOAuth;
+				SDKROOT = macosx10.6;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB921E08733DC00010E9CD /* Build configuration list for PBXNativeTarget "OAuthTouchStaticLib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB921F08733DC00010E9CD /* Debug */,
+				1DEB922008733DC00010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DEB922208733DC00010E9CD /* Build configuration list for PBXProject "GTMOAuth" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB922308733DC00010E9CD /* Debug */,
+				1DEB922408733DC00010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4F7249B1122483B8001A4AD0 /* Build configuration list for PBXNativeTarget "UnitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F7249AF122483B8001A4AD0 /* Debug */,
+				4F7249B0122483B8001A4AD0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4F724A7412248B19001A4AD0 /* Build configuration list for PBXNativeTarget "GTMOAuth.framework" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F724A7212248B19001A4AD0 /* Debug */,
+				4F724A7312248B19001A4AD0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 0867D690FE84028FC02AAC07 /* Project object */;
+}
