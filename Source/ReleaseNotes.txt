@@ -1,0 +1,10 @@
+GTM HTTP Fetcher Release Notes
+
+Project site:     http://code.google.com/p/gtm-http-fetcher/
+Discussion group: http://groups.google.com/group/google-toolbox-for-mac
+
+   
+Release 1.0.0
+16-April-2007
+
+Initial public release.
