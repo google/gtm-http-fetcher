@@ -56,6 +56,12 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 - (void)primeRetryTimerWithNewTimeInterval:(NSTimeInterval)secs;
 - (void)sendStopNotificationIfNeeded;
 - (void)retryFetch;
+- (void)retryTimerFired:(NSTimer *)timer;
+@end
+
+@interface GTMHTTPFetcher (GTMHTTPFetcherLoggingInternal)
+- (void)setupStreamLogging;
+- (void)logFetchWithError:(NSError *)error;
 @end
 
 @implementation GTMHTTPFetcher

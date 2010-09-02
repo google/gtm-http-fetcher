@@ -26,7 +26,9 @@
 #import "GTMHTTPServer.h"
 
 // avoid some of GTM's promiscuous dependencies
+#ifndef _GTMDevLog
 #define _GTMDevLog NSLog
+#endif
 #define GTM_STATIC_CAST(type, object) ((type *) (object))
 #define GTMCFAutorelease(x) [NSMakeCollectable(x) autorelease]
 
@@ -253,9 +255,9 @@ startFailed:
   NSDictionary *userInfo = [notification userInfo];
   NSFileHandle *newConnection =
     [userInfo objectForKey:NSFileHandleNotificationFileHandleItem];
-  NSAssert(newConnection != nil,
-           @"failed to get the connection in the notification: %@",
-           notification);
+  NSAssert1(newConnection != nil,
+            @"failed to get the connection in the notification: %@",
+            notification);
 
   // make sure we accept more...
   [listenHandle_ acceptConnectionInBackgroundAndNotify];

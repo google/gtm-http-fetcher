@@ -48,6 +48,10 @@
 @interface GTMHTTPFetcher (GTMHTTPFetcherLoggingInternal)
 + (NSString *)headersStringForDictionary:(NSDictionary *)dict;
 
+- (void)inputStream:(GTMProgressMonitorInputStream *)stream
+     readIntoBuffer:(void *)buffer
+             length:(unsigned long long)length;
+
 // internal file utilities for logging
 + (BOOL)fileOrDirExistsAtPath:(NSString *)path;
 + (BOOL)makeDirectoryUpToPath:(NSString *)path;

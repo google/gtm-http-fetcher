@@ -25,10 +25,11 @@
 // - When you just want the result from a GET or POST
 // - When you want the "standard" behavior for connections (redirection handling
 //   an so on)
+// - When you want automatic retry on failures
 // - When you want to avoid cookie collisions with Safari and other applications
-// - When you want to provide if-modified-since headers
-// - When you need to set a credential for the http
-// - When you want to avoid changing WebKit's cookies
+// - When you are fetching resources with ETags and want to avoid the overhead
+//   of repeated fetches of unchanged data
+// - When you need to set a credential for the http operation
 //
 // This is assumed to be a one-shot fetch request; don't reuse the object
 // for a second fetch.
@@ -47,10 +48,6 @@
 //
 //  // optional post data
 //  [myFetcher setPostData:[postString dataUsingEncoding:NSUTF8StringEncoding]];
-//
-//  // optional fetch history, for persisting modified-dates and local cookie
-//  // storage
-//  [myFetcher setFetchHistory:myFetchHistory];
 //
 //  [myFetcher beginFetchWithDelegate:self
 //                  didFinishSelector:@selector(myFetcher:finishedWithData:error:)];
@@ -109,9 +106,9 @@
 // To rely instead on WebKit's global NSHTTPCookieStorage, call
 // setCookieStorageMethod: with kGTMHTTPFetcherCookieStorageMethodSystemDefault.
 //
-// If you provide a fetch history dictionary (such as for periodic checks,
-// described below) then the cookie storage mechanism is set to use the fetch
-// history rather than the static storage.
+// If the fetcher is created from a GTMHTTPFetcherService object
+// then the cookie storage mechanism is set to use the cookie storage in the
+// service object rather than the static storage.
 //
 //
 // Fetching for periodic checks:
@@ -121,8 +118,8 @@
 // bandwidth by providing a status message instead of repeated response
 // data.
 //
-// To get this behavior, provide a persistent mutable dictionary to
-// setFetchHistory:, and look for a fetch callback error with code 304
+// To get this behavior, create the fetcher from an GTMHTTPFetcherService object
+// and look for a fetch callback error with code 304
 // (kGTMHTTPFetcherStatusNotModified) like this:
 //
 // - (void)myFetcher:(GTMHTTPFetcher *)fetcher finishedWithData:(NSData *)data error:(NSError *)error {
@@ -132,10 +129,6 @@
 //      // handle other server status code
 //    }
 // }
-//
-// The fetchHistory object should be maintained by the client between fetches
-// and given to each fetcher intended to have the If-None-Match header
-// or the same cookie storage.
 //
 //
 // Monitoring received data
@@ -173,7 +166,8 @@
 // selectors being invoked.
 //
 // Optionally, the client may set the maximum retry interval:
-//  [myFetcher setMaxRetryInterval:60.0]; // in seconds; default is 600 seconds
+//  [myFetcher setMaxRetryInterval:60.0]; // in seconds; default is 60 seconds
+//                                        // for downloads, 600 for uploads
 //
 // Also optionally, the client may provide a callback selector to determine
 // if a status code or other error should be retried.
