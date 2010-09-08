@@ -24,7 +24,7 @@
 //
 // - For fetch responses with Etag headers, the fetch history
 //   remembers the response headers. Future fetcher requests to the same URL
-//   will be given an "If-none-match" header, telling the server to return
+//   will be given an "If-None-Match" header, telling the server to return
 //   a 304 Not Modified status if the response is unchanged, reducing the
 //   server load and network traffic.
 //
@@ -74,6 +74,16 @@ _EXTERN const NSUInteger kGTMDefaultETaggedDataCacheMemoryCapacity _INITIALIZE_A
   GTMCookieStorage *cookieStorage_;
 }
 
+// with caching enabled, previously-cached data will be returned instead of
+// 304 Not Modified responses when repeating a fetch of an URL that previously
+// included an ETag header in its response
+@property (assign) BOOL shouldCacheETaggedData;
+
+// the default ETag data cache capacity is kGTMDefaultETaggedDataCacheMemoryCapacity
+@property (assign) NSUInteger memoryCapacity;
+
+@property (retain) GTMCookieStorage *cookieStorage;
+
 - (id)initWithMemoryCapacity:(NSUInteger)totalBytes
       shouldCacheETaggedData:(BOOL)shouldCacheETaggedData;
 
@@ -82,16 +92,7 @@ _EXTERN const NSUInteger kGTMDefaultETaggedDataCacheMemoryCapacity _INITIALIZE_A
 - (void)clearETaggedDataCache;
 - (void)clearHistory;
 
-- (BOOL)shouldCacheETaggedData;
-- (void)setShouldCacheETaggedData:(BOOL)flag;
-
-- (GTMCookieStorage *)cookieStorage;
-- (void)setCookieStorage:(GTMCookieStorage *)obj;
 - (void)removeAllCookies;
-
-// the default ETag data cache capacity is kGTMDefaultETaggedDataCacheMemoryCapacity
-- (NSUInteger)memoryCapacity;
-- (void)setMemoryCapacity:(NSUInteger)totalBytes;
 
 @end
 
@@ -112,17 +113,16 @@ _EXTERN const NSUInteger kGTMDefaultETaggedDataCacheMemoryCapacity _INITIALIZE_A
   NSDate *reservationDate_; // date this response's ETag was used
 }
 
-- (id)initWithResponse:(NSURLResponse *)response data:(NSData *)data;
-- (NSURLResponse *)response;
-- (NSData *)data;
+@property (readonly) NSURLResponse* response;
+@property (readonly) NSData* data;
 
 // date the response was saved or last accessed
-- (NSDate *)useDate;
-- (void)setUseDate:(NSDate *)date;
+@property (retain) NSDate *useDate;
 
 // date the response's ETag header was last used for a fetch request
-- (NSDate *)reservationDate;
-- (void)setReservationDate:(NSDate *)date;
+@property (retain) NSDate *reservationDate;
+
+- (id)initWithResponse:(NSURLResponse *)response data:(NSData *)data;
 @end
 
 @interface GTMURLCache : NSObject {
@@ -132,15 +132,14 @@ _EXTERN const NSUInteger kGTMDefaultETaggedDataCacheMemoryCapacity _INITIALIZE_A
   NSTimeInterval reservationInterval_; // reservation expiration interval
 }
 
+@property (assign) NSUInteger memoryCapacity;
+
 - (id)initWithMemoryCapacity:(NSUInteger)totalBytes;
 
 - (GTMCachedURLResponse *)cachedResponseForRequest:(NSURLRequest *)request;
 - (void)storeCachedResponse:(GTMCachedURLResponse *)cachedResponse forRequest:(NSURLRequest *)request;
 - (void)removeCachedResponseForRequest:(NSURLRequest *)request;
 - (void)removeAllCachedResponses;
-
-- (NSUInteger)memoryCapacity;
-- (void)setMemoryCapacity:(NSUInteger)totalBytes;
 
 // for unit testing
 - (void)setReservationInterval:(NSTimeInterval)secs;

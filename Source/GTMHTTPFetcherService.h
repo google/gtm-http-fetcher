@@ -54,13 +54,13 @@
 
 // Properties to be applied to each fetcher;
 // see GTMHTTPFetcher.h for descriptions
-@property (nonatomic, retain) NSArray *runLoopModes;
-@property (nonatomic, retain) NSURLCredential *credential;
-@property (nonatomic, retain) NSURLCredential *proxyCredential;
-@property (nonatomic, assign) NSInteger cookieStorageMethod;
-@property (nonatomic, assign) BOOL shouldCacheETaggedData;
+@property (retain) NSArray *runLoopModes;
+@property (retain) NSURLCredential *credential;
+@property (retain) NSURLCredential *proxyCredential;
+@property (assign) NSInteger cookieStorageMethod;
+@property (assign) BOOL shouldCacheETaggedData;
 
-@property (nonatomic, retain) GTMHTTPFetchHistory *fetchHistory;
+@property (retain) GTMHTTPFetchHistory *fetchHistory;
 
 - (void)clearETaggedDataCache;
 - (void)clearHistory;

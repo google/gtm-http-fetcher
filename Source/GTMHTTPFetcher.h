@@ -333,27 +333,27 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 // fetcher request
 //
 // the underlying request is mutable and may be modified by the caller
-@property (nonatomic, retain) NSMutableURLRequest *mutableRequest;
+@property (retain) NSMutableURLRequest *mutableRequest;
 
 // setting the credential is optional; it is used if the connection receives
 // an authentication challenge
-@property (nonatomic, retain) NSURLCredential *credential;
+@property (retain) NSURLCredential *credential;
 
 // setting the proxy credential is optional; it is used if the connection
 // receives an authentication challenge from a proxy
-@property (nonatomic, retain) NSURLCredential *proxyCredential;
+@property (retain) NSURLCredential *proxyCredential;
 
 // if post data or stream is not set, then a GET retrieval method is assumed
-@property (nonatomic, retain) NSData *postData;
-@property (nonatomic, retain) NSInputStream *postStream;
+@property (retain) NSData *postData;
+@property (retain) NSInputStream *postStream;
 
 // the default cookie storage method is kGTMHTTPFetcherCookieStorageMethodStatic
 // without a fetch history set, and kGTMHTTPFetcherCookieStorageMethodFetchHistory
 // with a fetch history set
-@property (nonatomic, assign) NSInteger cookieStorageMethod;
+@property (assign) NSInteger cookieStorageMethod;
 
 // the delegate is not retained except during the connection
-@property (nonatomic, assign) id delegate;
+@property (assign) id delegate;
 
 // the delegate's optional sentData selector has a signature like:
 //  - (void)myFetcher:(GTMHTTPFetcher *)fetcher
@@ -364,11 +364,11 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 // +doesSupportSentDataCallback indicates if this delegate method is supported
 + (BOOL)doesSupportSentDataCallback;
 
-@property (nonatomic, assign) SEL sentDataSelector;
+@property (assign) SEL sentDataSelector;
 
 // the delegate's optional receivedData selector has a signature like:
 //  - (void)myFetcher:(GTMHTTPFetcher *)fetcher receivedData:(NSData *)dataReceivedSoFar;
-@property (nonatomic, assign) SEL receivedDataSelector;
+@property (assign) SEL receivedDataSelector;
 
 #if NS_BLOCKS_AVAILABLE
 // the full interface to the block is provided rather than just a typedef for
@@ -380,14 +380,14 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 
 // retrying; see comments at the top of the file.  Calling
 // setRetryEnabled(YES) resets the min and max retry intervals.
-@property (nonatomic, assign, getter=isRetryEnabled) BOOL retryEnabled;
+@property (assign, getter=isRetryEnabled) BOOL retryEnabled;
 
 // retry selector or block is optional for retries.
 //
 // If present, it should have the signature:
 //   -(BOOL)fetcher:(GTMHTTPFetcher *)fetcher willRetry:(BOOL)suggestedWillRetry forError:(NSError *)error
 // and return YES to cause a retry.  See comments at the top of this file.
-@property (nonatomic, assign) SEL retrySelector;
+@property (assign) SEL retrySelector;
 
 #if NS_BLOCKS_AVAILABLE
 - (void)setRetryBlock:(BOOL (^)(BOOL suggestedWillRetry, NSError *error))block;
@@ -398,22 +398,22 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 // be attempted.  Setting maxRetryInterval to 0.0 will reset it to the
 // default value, 600 seconds.
 
-@property (nonatomic, assign) NSTimeInterval maxRetryInterval;
+@property (assign) NSTimeInterval maxRetryInterval;
 
 // Starting retry interval.  Setting minRetryInterval to 0.0 will reset it
 // to a random value between 1.0 and 2.0 seconds.  Clients should normally not
 // call this except for unit testing.
-@property (nonatomic, assign) NSTimeInterval minRetryInterval;
+@property (assign) NSTimeInterval minRetryInterval;
 
 // Multiplier used to increase the interval between retries, typically 2.0.
 // Clients should not need to call this.
-@property (nonatomic, assign) double retryFactor;
+@property (assign) double retryFactor;
 
 // number of retries attempted
-@property (nonatomic, readonly) NSUInteger retryCount;
+@property (readonly) NSUInteger retryCount;
 
 // interval delay to precede next retry
-@property (nonatomic, readonly) NSTimeInterval nextRetryInterval;
+@property (readonly) NSTimeInterval nextRetryInterval;
 
 // Begin fetching the request
 //
@@ -445,27 +445,27 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 - (void)stopFetching;
 
 // return the status code from the server response
-@property (nonatomic, readonly) NSInteger statusCode;
+@property (readonly) NSInteger statusCode;
 
 // return the http headers from the response
-@property (nonatomic, retain, readonly) NSDictionary *responseHeaders;
+@property (retain, readonly) NSDictionary *responseHeaders;
 
 // the response, once it's been received
-@property (nonatomic, retain) NSURLResponse *response;
+@property (retain) NSURLResponse *response;
 
 // buffer of currently-downloaded data
-@property (nonatomic, readonly) NSData *downloadedData;
+@property (readonly) NSData *downloadedData;
 
 // if the caller supplies a mutable dictionary, it's used for Last-Modified-Since
 //  checks and for cookie storage
 //  side effect: setting fetch history implicitly calls setCookieStorageMethod:
-@property (nonatomic, retain) id <GTMHTTPFetchHistoryProtocol> fetchHistory;
+@property (retain) id <GTMHTTPFetchHistoryProtocol> fetchHistory;
 
 // userData is retained for the convenience of the caller
-@property (nonatomic, retain) id userData;
+@property (retain) id userData;
 
-// properties are retained for the convenience of the caller
-@property (nonatomic, copy) NSDictionary *properties;
+// stored property values are retained for the convenience of the caller
+@property (retain) NSDictionary *properties;
 
 - (void)setProperty:(id)obj forKey:(NSString *)key; // pass nil obj to remove property
 - (id)propertyForKey:(NSString *)key;
@@ -474,7 +474,7 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 
 // using the fetcher while a modal dialog is displayed requires setting the
 // run-loop modes to include NSModalPanelRunLoopMode
-@property (nonatomic, retain) NSArray *runLoopModes;
+@property (retain) NSArray *runLoopModes;
 
 // users who wish to replace GTMHTTPFetcher's use of NSURLConnection
 // can do so globally here.  The replacement should be a subclass of

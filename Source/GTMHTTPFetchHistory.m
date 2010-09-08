@@ -198,6 +198,11 @@ static NSString* const kGTMETagHeader = @"Etag";
 
 @implementation GTMCachedURLResponse
 
+@synthesize response = response_;
+@synthesize data = data_;
+@synthesize reservationDate = reservationDate_;
+@synthesize useDate = useDate_;
+
 - (id)initWithResponse:(NSURLResponse *)response data:(NSData *)data {
   self = [super init];
   if (self != nil) {
@@ -228,34 +233,6 @@ static NSString* const kGTMETagHeader = @"Etag";
           [response_ URL]];
 }
 
-// setters/getters
-
-- (NSURLResponse *)response {
-  return response_;
-}
-
-- (NSData *)data {
-  return data_;
-}
-
-- (NSDate *)reservationDate{
-  return reservationDate_;
-}
-
-- (void)setReservationDate:(NSDate *)date {
-  [reservationDate_ autorelease];
-  reservationDate_ = [date retain];
-}
-
-- (NSDate *)useDate{
-  return useDate_;
-}
-
-- (void)setUseDate:(NSDate *)date {
-  [useDate_ autorelease];
-  useDate_ = [date retain];
-}
-
 - (NSComparisonResult)compareUseDate:(GTMCachedURLResponse *)other {
   return [useDate_ compare:[other useDate]];
 }
@@ -267,6 +244,8 @@ static NSString* const kGTMETagHeader = @"Etag";
 //
 
 @implementation GTMURLCache
+
+@dynamic memoryCapacity;
 
 - (id)init {
   return [self initWithMemoryCapacity:kGTMDefaultETaggedDataCacheMemoryCapacity];
@@ -415,6 +394,11 @@ static NSString* const kGTMETagHeader = @"Etag";
 
 @implementation GTMHTTPFetchHistory
 
+@synthesize cookieStorage = cookieStorage_;
+
+@dynamic shouldCacheETaggedData;
+@dynamic memoryCapacity;
+
 - (id)init {
  return [self initWithMemoryCapacity:kGTMDefaultETaggedDataCacheMemoryCapacity
               shouldCacheETaggedData:NO];
@@ -544,15 +528,6 @@ static NSString* const kGTMETagHeader = @"Etag";
 - (void)clearHistory {
   [self clearETaggedDataCache];
   [cookieStorage_ removeAllCookies];
-}
-
-- (GTMCookieStorage *)cookieStorage {
-  return cookieStorage_;
-}
-
-- (void)setCookieStorage:(GTMCookieStorage *)obj {
-  [cookieStorage_ autorelease];
-  cookieStorage_ = [obj retain];
 }
 
 - (void)removeAllCookies {

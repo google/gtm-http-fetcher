@@ -95,25 +95,25 @@
 - (void)resumeFetchingWithDelegate:(id)delegate;
 - (BOOL)isPaused;
 
-@property (nonatomic, retain) NSURL *locationURL;
-@property (nonatomic, retain) NSData *uploadData;
-@property (nonatomic, retain) NSFileHandle *uploadFileHandle;
-@property (nonatomic, copy) NSString *uploadMIMEType;
-@property (nonatomic, assign) NSUInteger chunkSize;
-@property (nonatomic, assign) NSUInteger currentOffset;
+@property (retain) NSURL *locationURL;
+@property (retain) NSData *uploadData;
+@property (retain) NSFileHandle *uploadFileHandle;
+@property (copy) NSString *uploadMIMEType;
+@property (assign) NSUInteger chunkSize;
+@property (assign) NSUInteger currentOffset;
 
 // the fetcher for the current data chunk, if any
-@property (nonatomic, retain) GTMHTTPFetcher *chunkFetcher;
+@property (retain) GTMHTTPFetcher *chunkFetcher;
 
 // the active fetcher is the last chunk fetcher, or the upload fetcher itself
 // if no chunk fetcher has yet been created
-@property (nonatomic, readonly) GTMHTTPFetcher *activeFetcher;
+@property (readonly) GTMHTTPFetcher *activeFetcher;
 
 // the response headers from the most recently-completed fetch
-@property (nonatomic, readwrite, retain) NSDictionary *responseHeaders;
+@property (retain) NSDictionary *responseHeaders;
 
 // the status code from the most recently-completed fetch
-@property (nonatomic, assign) NSInteger statusCode;
+@property (assign) NSInteger statusCode;
 
 @end
 
