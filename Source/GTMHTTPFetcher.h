@@ -270,6 +270,7 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 - (void)updateFetchHistoryWithRequest:(NSURLRequest *)request
                              response:(NSURLResponse *)response
                        downloadedData:(NSData *)downloadedData;
+- (void)removeCachedDataForRequest:(NSURLRequest *)request;
 @end
 
 // async retrieval of an http get or post
@@ -278,6 +279,7 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
   NSMutableURLRequest *request_;
   NSURLConnection *connection_;    // while connection_ is non-nil, delegate_ is retained
   NSMutableData *downloadedData_;
+  NSFileHandle *downloadFileHandle_;
   NSURLCredential *credential_;     // username & password
   NSURLCredential *proxyCredential_; // credential supplied to proxy servers
   NSData *postData_;
@@ -368,6 +370,8 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 
 // the delegate's optional receivedData selector has a signature like:
 //  - (void)myFetcher:(GTMHTTPFetcher *)fetcher receivedData:(NSData *)dataReceivedSoFar;
+//
+// The dataReceived argument will be nil when downloading to a file handle
 @property (assign) SEL receivedDataSelector;
 
 #if NS_BLOCKS_AVAILABLE
@@ -375,6 +379,8 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 // its parameter list in order to get more useful code completion in the Xcode
 // editor
 - (void)setSentDataBlock:(void (^)(NSInteger bytesSent, NSInteger totalBytesSent, NSInteger bytesExpectedToSend))block;
+
+// The dataReceived argument will be nil when downloading to a file handle
 - (void)setReceivedDataBlock:(void (^)(NSData *dataReceivedSoFar))block;
 #endif
 
@@ -455,6 +461,13 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 
 // buffer of currently-downloaded data
 @property (readonly) NSData *downloadedData;
+
+// if downloadFileHandle is set, data received is immediately appended to
+// the file handle rather than being accumulated in the downloadedData property
+//
+// The file handle supplied must allow writing and support seekToFileOffset:,
+// and must be set before downloading begins.
+@property (retain) NSFileHandle *downloadFileHandle;
 
 // if the caller supplies a mutable dictionary, it's used for Last-Modified-Since
 //  checks and for cookie storage

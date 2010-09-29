@@ -56,6 +56,7 @@
                                   userData:(id)userData;
 
 - (NSString *)localURLStringToTestFileName:(NSString *)name;
+- (NSString *)localPathForFileName:(NSString *)name;
 @end
 
 @implementation GTMHTTPFetcherFetchingTest
@@ -163,10 +164,20 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
                retryDelayStoppedNotificationCount_);
 }
 
+- (void)resetNotificationCounts {
+  fetchStartedNotificationCount_ = 0;
+  fetchStoppedNotificationCount_ = 0;
+  retryDelayStartedNotificationCount_ = 0;
+  retryDelayStoppedNotificationCount_ = 0;
+}
+
 #pragma mark Tests
 
 - (void)testFetch {
   if (!isServerRunning_) return;
+
+  [self resetNotificationCounts];
+  [self resetFetchResponse];
 
   NSString *urlString = [self localURLStringToTestFileName:kValidFileName];
   [self doFetchWithURLString:urlString cachingDatedData:YES];
@@ -274,6 +285,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
 - (void)testWrongFetch {
 
   if (!isServerRunning_) return;
+  [self resetNotificationCounts];
 
   // fetch a live, invalid URL
   NSString *badURLString = @"http://localhost:86/";
@@ -309,10 +321,79 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertEquals(retryDelayStoppedNotificationCount_, 0, @"retries started");
 }
 
+- (void)testFetchToFileHandle {
+  if (!isServerRunning_) return;
+
+  [self resetFetchResponse];
+  [self resetNotificationCounts];
+
+  // create an empty file from which we can make an NSFileHandle
+  NSString *path = [NSTemporaryDirectory() stringByAppendingFormat:@"fhTest_%u",
+                    TickCount()];
+  [[NSData data] writeToFile:path atomically:YES];
+
+  NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingAtPath:path];
+  STAssertNotNil(fileHandle, @"missing filehandle for %@", path);
+
+  // make the http request to our test server
+  NSString *urlString = [self localURLStringToTestFileName:kValidFileName];
+  NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:urlString]
+                                       cachePolicy:NSURLRequestReloadIgnoringCacheData
+                                   timeoutInterval:kGiveUpInterval];
+  GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  STAssertNotNil(fetcher, @"Failed to allocate fetcher");
+
+  [fetcher setDownloadFileHandle:fileHandle];
+
+  // received-data block
+  //
+  // the final received-data block invocation should show the length of the
+  // file actually downloaded
+  __block NSUInteger receivedDataLen = 0;
+  [fetcher setReceivedDataBlock:^(NSData *dataReceivedSoFar) {
+    // a nil data argument is expected when the downloaded data is written
+    // to a file handle
+    STAssertNil(dataReceivedSoFar, @"unexpected dataReceivedSoFar");
+
+    receivedDataLen = [fileHandle offsetInFile];
+  }];
+
+  // fetch & completion block
+  __block BOOL hasFinishedFetching = NO;
+  [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
+    STAssertNil(data, @"unexpected data");
+    STAssertNil(error, @"unexpected error");
+
+    NSString *fetchedContents = [NSString stringWithContentsOfFile:path
+                                                          encoding:NSUTF8StringEncoding
+                                                             error:NULL];
+    STAssertEquals(receivedDataLen, [fetchedContents length],
+                   @"length issue");
+
+    NSString *origPath = [self localPathForFileName:kValidFileName];
+    NSString *origContents = [NSString stringWithContentsOfFile:origPath
+                                                       encoding:NSUTF8StringEncoding
+                                                          error:NULL];
+    STAssertEqualObjects(fetchedContents, origContents, @"fetch to FH error");
+
+    hasFinishedFetching = YES;
+  }];
+
+  // spin until the fetch completes
+  NSDate* giveUpDate = [NSDate dateWithTimeIntervalSinceNow:kGiveUpInterval];
+  while ((!hasFinishedFetching) && [giveUpDate timeIntervalSinceNow] > 0) {
+    NSDate* loopIntervalDate = [NSDate dateWithTimeIntervalSinceNow:kRunLoopInterval];
+    [[NSRunLoop currentRunLoop] runUntilDate:loopIntervalDate];
+  }
+
+  [[NSFileManager defaultManager] removeItemAtPath:path
+                                             error:NULL];
+}
 
 - (void)testRetryFetches {
 
   if (!isServerRunning_) return;
+  [self resetNotificationCounts];
 
   GTMHTTPFetcher *fetcher;
 
@@ -436,16 +517,21 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertTrue(isFetching, @"Begin fetch failed");
 
   if (isFetching) {
-
     // Give time for the fetch to happen, but give up if 10 seconds elapse with no response
     NSDate* giveUpDate = [NSDate dateWithTimeIntervalSinceNow:kGiveUpInterval];
     while ((!fetchedData_ && !fetcherError_) && [giveUpDate timeIntervalSinceNow] > 0) {
       NSDate* loopIntervalDate = [NSDate dateWithTimeIntervalSinceNow:kRunLoopInterval];
       [[NSRunLoop currentRunLoop] runUntilDate:loopIntervalDate];
-    }
+    }  
   }
 
   return fetcher;
+}
+
+- (NSString *)localPathForFileName:(NSString *)name {
+  NSString *docRoot = [self docRootPath];
+  NSString *filePath = [docRoot stringByAppendingPathComponent:name];
+  return filePath;
 }
 
 - (NSString *)localURLStringToTestFileName:(NSString *)name {
@@ -465,8 +551,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
 
   // just for sanity, let's make sure we see the file locally, so
   // we can expect the Python http server to find it too
-  NSString *docRoot = [self docRootPath];
-  NSString *filePath = [docRoot stringByAppendingPathComponent:name];
+  NSString *filePath = [self localPathForFileName:name];
 
   BOOL doesExist = [[NSFileManager defaultManager] fileExistsAtPath:filePath];
   STAssertTrue(doesExist, @"Missing test file %@", filePath);

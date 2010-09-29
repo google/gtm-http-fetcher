@@ -3,7 +3,11 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
-   
+29-Sept-2010
+
+Added downloadFileHandle support for downloading directly to a file.
+
+
 Release 1.0.0
 9-Sept-2010
 
