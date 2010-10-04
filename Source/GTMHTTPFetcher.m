@@ -181,7 +181,6 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
   [downloadedData_ release];
   downloadedData_ = nil;
 
-  [self setDelegate:delegate];
   finishedSEL_ = finishedSEL;
 
   NSString *effectiveHTTPMethod = [request_ valueForHTTPHeaderField:@"X-HTTP-Method-Override"];
@@ -271,18 +270,10 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
     goto CannotBeginFetch;
   }
 
-  // once connection_ is non-nil we can send the start notification
-  NSNotificationCenter *defaultNC = [NSNotificationCenter defaultCenter];
-  [defaultNC postNotificationName:kGTMHTTPFetcherStartedNotification
-                           object:self];
-  isStopNotificationNeeded_ = YES;
-
-  // we'll retain the delegate only during the outstanding connection (similar
+  // We'll retain the delegate only during the outstanding connection (similar
   // to what Cocoa does with performSelectorOnMainThread:) since we'd crash
-  // if the delegate was released in the interim.  We don't retain the selector
-  // at other times, to avoid vicious retain loops.  This retain is balanced in
-  // the -stopFetch method.
-  [delegate_ retain];
+  // if the delegate was released in the interim.
+  [self setDelegate:delegate];
 
   if (downloadFileHandle_ != nil) {
     // downloading to a file, so downloadedData_ remains nil
@@ -290,6 +281,11 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
     downloadedData_ = [[NSMutableData alloc] init];
   }
 
+  // once connection_ is non-nil we can send the start notification
+  isStopNotificationNeeded_ = YES;
+  NSNotificationCenter *defaultNC = [NSNotificationCenter defaultCenter];
+  [defaultNC postNotificationName:kGTMHTTPFetcherStartedNotification
+                           object:self];
   return YES;
 
 CannotBeginFetch:
@@ -398,11 +394,12 @@ CannotBeginFetch:
 
     // send the stopped notification
     [self sendStopNotificationIfNeeded];
-
-    // balance the retain done when the connection was opened, and prevent us
-    // from using the delegate again
-    [self setDelegate:nil];
   }
+
+  // balance the retain done when the connection was opened, and prevent us
+  // from using the delegate again
+  [delegate_ autorelease];
+  delegate_ = nil;
 
   // avoid a retain loop in case the blocks are referencing
   // the fetcher instance
@@ -958,13 +955,13 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
 - (void)destroyRetryTimer {
   if (retryTimer_) {
-    NSNotificationCenter *defaultNC = [NSNotificationCenter defaultCenter];
-    [defaultNC postNotificationName:kGTMHTTPFetcherRetryDelayStoppedNotification
-                             object:self];
-
     [retryTimer_ invalidate];
     [retryTimer_ autorelease];
     retryTimer_ = nil;
+
+    NSNotificationCenter *defaultNC = [NSNotificationCenter defaultCenter];
+    [defaultNC postNotificationName:kGTMHTTPFetcherRetryDelayStoppedNotification
+                             object:self];
   }
 }
 
@@ -1040,7 +1037,6 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 #pragma mark Getters and Setters
 
 @dynamic cookieStorageMethod;
-@dynamic delegate;
 @dynamic retryEnabled;
 @dynamic maxRetryInterval;
 @dynamic minRetryInterval;
@@ -1057,6 +1053,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 @synthesize proxyCredential = proxyCredential_;
 @synthesize postData = postData_;
 @synthesize postStream = postStream_;
+@synthesize delegate = delegate_;
 @synthesize sentDataSelector = sentDataSEL_;
 @synthesize receivedDataSelector = receivedDataSEL_;
 @synthesize retrySelector = retrySEL_;
@@ -1095,23 +1092,6 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       // kGTMHTTPFetcherCookieStorageMethodNone - ignore cookies
       [self setCookieStorage:nil];
     }
-  }
-}
-
-- (id)delegate {
-  return delegate_;
-}
-
-- (void)setDelegate:(id)theDelegate {
-
-  // we retain delegate_ only during the life of the connection
-  //
-  // once the finished callback has been invoked, the delegate may be set to nil
-  if (connection_) {
-    [delegate_ autorelease];
-    delegate_ = [theDelegate retain];
-  } else {
-    delegate_ = theDelegate;
   }
 }
 

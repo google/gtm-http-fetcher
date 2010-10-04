@@ -277,7 +277,7 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 @interface GTMHTTPFetcher : NSObject {
  @protected
   NSMutableURLRequest *request_;
-  NSURLConnection *connection_;    // while connection_ is non-nil, delegate_ is retained
+  NSURLConnection *connection_;
   NSMutableData *downloadedData_;
   NSFileHandle *downloadFileHandle_;
   NSURLCredential *credential_;     // username & password
@@ -286,7 +286,7 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
   NSInputStream *postStream_;
   NSMutableData *loggedStreamData_;
   NSURLResponse *response_;         // set in connection:didReceiveResponse:
-  __weak id delegate_;              // weak (though retained during an open connection)
+  id delegate_;
   SEL finishedSEL_;                 // should by implemented by delegate
   SEL sentDataSEL_;                 // optional, set with setSentDataSelector
   SEL receivedDataSEL_;             // optional, set with setReceivedDataSelector
@@ -354,8 +354,8 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
 // with a fetch history set
 @property (assign) NSInteger cookieStorageMethod;
 
-// the delegate is not retained except during the connection
-@property (assign) id delegate;
+// the delegate is retained during the connection
+@property (retain) id delegate;
 
 // the delegate's optional sentData selector has a signature like:
 //  - (void)myFetcher:(GTMHTTPFetcher *)fetcher
