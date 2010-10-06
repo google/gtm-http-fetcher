@@ -242,6 +242,7 @@ enum {
   kGTMHTTPFetcherErrorDownloadFailed = -1,
   kGTMHTTPFetcherErrorAuthenticationChallengeFailed = -2,
   kGTMHTTPFetcherErrorChunkUploadFailed = -3,
+  kGTMHTTPFetcherErrorFileHandleException = -4,
 
   kGTMHTTPFetcherStatusNotModified = 304,
   kGTMHTTPFetcherStatusPreconditionFailed = 412

@@ -105,7 +105,6 @@
 
   NSString *method = [request method];
 
-#if 0
   // Code for future testing of the chunked-upload protocol
   //
   // This code is not yet tested
@@ -120,7 +119,6 @@
     NSString *pathWithoutLoc = [path stringByDeletingPathExtension];
     NSString *fullLocation = [NSString stringWithFormat:@"http://%@%@.upload",
                               host, pathWithoutLoc];
-    NSLog(@"fullLocation=%@", fullLocation);
 
     [responseHeaders setValue:fullLocation forKey:@"Location"];
     resultStatus = 200;
@@ -173,7 +171,6 @@
       }
     }
   }
-#endif
 
   NSString *statusStr = [self valueForParameter:@"status" path:path];
   if (statusStr) {
@@ -223,6 +220,7 @@
   //
   // Finally, package up the response, and return it to the client
   //
+SendResponse:
   response = [GTMHTTPResponseMessage responseWithBody:data
                                           contentType:@"application/json"
                                            statusCode:resultStatus];

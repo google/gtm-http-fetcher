@@ -19,6 +19,7 @@
 #import "GTMHTTPFetcher.h"
 #import "GTMHTTPFetchHistory.h"
 #import "GTMHTTPFetcherLogging.h"
+#import "GTMHTTPUploadFetcher.h"
 
 @interface GTMHTTPFetcherFetchingTest : SenTestCase {
 
@@ -57,6 +58,8 @@
 
 - (NSString *)localURLStringToTestFileName:(NSString *)name;
 - (NSString *)localPathForFileName:(NSString *)name;
+
+- (BOOL)waitOnFetchCallback;
 @end
 
 @implementation GTMHTTPFetcherFetchingTest
@@ -362,7 +365,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   __block BOOL hasFinishedFetching = NO;
   [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
     STAssertNil(data, @"unexpected data");
-    STAssertNil(error, @"unexpected error");
+    STAssertNil(error, @"unexpected error: %@", error);
 
     NSString *fetchedContents = [NSString stringWithContentsOfFile:path
                                                           encoding:NSUTF8StringEncoding
@@ -466,6 +469,323 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertEquals(retryDelayStoppedNotificationCount_, 6, @"retries started");
 }
 
+#pragma mark Upload fetches
+
+- (NSData *)generatedUploadDataWithLength:(NSUInteger)length {
+  // fill a data block with data
+  NSMutableData *data = [NSMutableData dataWithLength:length];
+
+  unsigned char *bytes = [data mutableBytes];
+  for (NSUInteger idx = 0; idx < length; idx++) {
+    bytes[idx] = ((idx + 1) % 256);
+  }
+
+  return data;
+}
+
+static NSString* const kPauseAtKey = @"pauseAt";
+static NSString* const kRetryAtKey = @"retryAt";
+static NSString* const kOriginalURLKey = @"origURL";
+
+- (void)uploadFetcher:(GTMHTTPUploadFetcher *)fetcher
+         didSendBytes:(NSInteger)bytesSent
+       totalBytesSent:(NSInteger)totalBytesSent
+totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
+
+  NSNumber *pauseAtNum = [fetcher propertyForKey:kPauseAtKey];
+  if (pauseAtNum) {
+    int pauseAt = [pauseAtNum intValue];
+    if (pauseAt < totalBytesSent) {
+      // we won't be paused again
+      [fetcher setProperty:nil forKey:kPauseAtKey];
+
+      // we've reached the point where we should pause
+      //
+      // use perform selector to avoid pausing immediately, as that would nuke
+      // the chunk upload fetcher that is calling us back now
+      [fetcher performSelector:@selector(pauseFetching)
+                    withObject:nil
+                    afterDelay:0.0];
+
+      [fetcher performSelector:@selector(resumeFetchingWithDelegate:)
+                    withObject:self
+                    afterDelay:1.0];
+    }
+  }
+
+  NSNumber *retryAtNum = [fetcher propertyForKey:kRetryAtKey];
+  if (retryAtNum) {
+    int retryAt = [retryAtNum intValue];
+    if (retryAt < totalBytesSent) {
+      // we won't be retrying again
+      [fetcher setProperty:nil forKey:kRetryAtKey];
+
+      // save the current locationURL before appending &status=503
+      NSURL *origURL = fetcher.locationURL;
+      [fetcher setProperty:origURL forKey:kOriginalURLKey];
+
+      NSString *newURLStr = [[origURL absoluteString] stringByAppendingString:@"?status=503"];
+
+      fetcher.locationURL = [NSURL URLWithString:newURLStr];
+    }
+  }
+}
+
+
+-(BOOL)uploadRetryFetcher:(GTMHTTPUploadFetcher *)fetcher willRetry:(BOOL)suggestedWillRetry forError:(NSError *)error {
+  // change this fetch's request (and future requests) to have the original URL,
+  // not the one with status=503 appended
+  NSURL *origURL = [fetcher propertyForKey:kOriginalURLKey];
+
+  [fetcher.activeFetcher.mutableRequest setURL:origURL];
+  fetcher.locationURL = origURL;
+
+  [fetcher setProperty:nil forKey:kOriginalURLKey];
+
+  return suggestedWillRetry; // do the retry fetch; it should succeed now
+}
+
+- (void)testChunkedUploadFetch {
+  if (!isServerRunning_) return;
+
+  NSData *bigData = [self generatedUploadDataWithLength:199000];
+  NSData *smallData = [self generatedUploadDataWithLength:13];
+
+  NSString *gettysburgPath = [testServer_ localPathForFile:kValidFileName];
+  NSData *gettysburgAddress = [NSData dataWithContentsOfFile:gettysburgPath];
+
+  // write the big data into a temp file
+  NSString *tempDir = NSTemporaryDirectory();
+  NSString *bigFileName = @"GTMFetchingTest_BigFile";
+  NSString *bigFilePath = [tempDir stringByAppendingPathComponent:bigFileName];
+  [bigData writeToFile:bigFilePath atomically:NO];
+
+  NSFileHandle *bigFileHandle = [NSFileHandle fileHandleForReadingAtPath:bigFilePath];
+
+  SEL progressSel = @selector(uploadFetcher:didSendBytes:totalBytesSent:totalBytesExpectedToSend:);
+  SEL retrySel = @selector(uploadRetryFetcher:willRetry:forError:);
+  SEL finishedSel = @selector(testFetcher:finishedWithData:error:);
+
+  NSString *urlString = [self localURLStringToTestFileName:kValidFileName];
+  urlString = [urlString stringByAppendingPathExtension:@"location"];
+
+  [self resetNotificationCounts];
+
+  //
+  // test uploading a big file handle
+  //
+  [self resetFetchResponse];
+
+  NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:urlString]
+                                           cachePolicy:NSURLRequestReloadIgnoringCacheData
+                                       timeoutInterval:kGiveUpInterval];
+
+  GTMHTTPUploadFetcher *fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
+                                                                uploadFileHandle:bigFileHandle
+                                                                  uploadMIMEType:@"text/plain"
+                                                                       chunkSize:75000];
+
+  [fetcher beginFetchWithDelegate:self
+                didFinishSelector:finishedSel];
+
+  [self waitOnFetchCallback];
+
+
+  STAssertNotNil(fetchedData_,
+                 @"failed to fetch data, status:%d error:%@, URL:%@",
+                 fetchedStatus_, fetcherError_, urlString);
+
+  // check that we fetched the expected data
+  STAssertEqualObjects(fetchedData_, gettysburgAddress,
+                       @"Lincoln disappointed");
+  STAssertNotNil(fetchedResponse_,
+                 @"failed to get fetch response, status:%d error:%@",
+                 fetchedStatus_, fetcherError_);
+  STAssertNotNil(fetchedRequest_,
+                 @"failed to get fetch request, URL %@", urlString);
+  STAssertNil(fetcherError_, @"fetching data gave error: %@", fetcherError_);
+  STAssertEquals(fetchedStatus_, 200,
+                 @"unexpected status for URL %@", urlString);
+
+  // check the request of the final chunk fetcher to be sure we were uploading
+  // chunks as expected.  Chunk requests replace the original request in the
+  // fetcher.
+  NSDictionary *reqHdrs = [fetcher.mutableRequest allHTTPHeaderFields];
+
+  NSString *uploadReqURLPath = @"gettysburgaddress.txt.location";
+  NSString *contentLength = [reqHdrs objectForKey:@"Content-Length"];
+  NSString *contentRange = [reqHdrs objectForKey:@"Content-Range"];
+
+  STAssertTrue([[[request URL] absoluteString] hasSuffix:uploadReqURLPath],
+               @"upload request wrong");
+  STAssertEqualObjects(contentLength, @"49000", @"content length");
+  STAssertEqualObjects(contentRange, @"bytes 150000-198999/199000", @"range");
+
+
+  //
+  // repeat the big upload using NSData
+  //
+  [self resetFetchResponse];
+
+  request = [NSURLRequest requestWithURL:[NSURL URLWithString:urlString]
+                             cachePolicy:NSURLRequestReloadIgnoringCacheData
+                         timeoutInterval:kGiveUpInterval];
+
+  fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
+                                                uploadData:bigData
+                                            uploadMIMEType:@"text/plain"
+                                                 chunkSize:75000];
+
+  [fetcher beginFetchWithDelegate:self
+                didFinishSelector:finishedSel];
+
+  [self waitOnFetchCallback];
+
+  // check that we fetched the expected data
+  STAssertEqualObjects(fetchedData_, gettysburgAddress,
+                       @"Lincoln disappointed");
+  STAssertNotNil(fetchedResponse_,
+                 @"failed to get fetch response, status:%d error:%@",
+                 fetchedStatus_, fetcherError_);
+  STAssertNotNil(fetchedRequest_,
+                 @"failed to get fetch request, URL %@", urlString);
+  STAssertNil(fetcherError_, @"fetching data gave error: %@", fetcherError_);
+  STAssertEquals(fetchedStatus_, 200,
+                 @"unexpected status for URL %@", urlString);
+
+  // check the request of the final chunk fetcher
+  reqHdrs = [fetcher.mutableRequest allHTTPHeaderFields];
+
+  uploadReqURLPath = @"gettysburgaddress.txt.location";
+  contentLength = [reqHdrs objectForKey:@"Content-Length"];
+  contentRange = [reqHdrs objectForKey:@"Content-Range"];
+
+  STAssertTrue([[[request URL] absoluteString] hasSuffix:uploadReqURLPath],
+               @"upload request wrong");
+  STAssertEqualObjects(contentLength, @"49000", @"content length");
+  STAssertEqualObjects(contentRange, @"bytes 150000-198999/199000", @"range");
+
+
+  //
+  // repeat the big upload, pausing after 20000 bytes
+  //
+  [self resetFetchResponse];
+
+  fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
+                                                uploadData:bigData
+                                            uploadMIMEType:@"text/plain"
+                                                 chunkSize:75000];
+
+  // add a property to the fetcher that our progress callback will look for to
+  // know when to pause and resume the upload
+  fetcher.sentDataSelector = progressSel;
+  [fetcher setProperty:[NSNumber numberWithInt:20000]
+                forKey:kPauseAtKey];
+
+  [fetcher beginFetchWithDelegate:self
+                didFinishSelector:finishedSel];
+
+  [self waitOnFetchCallback];
+
+  // check the request of the final chunk fetcher to be sure we were uploading
+  // chunks as expected.
+  reqHdrs = [fetcher.mutableRequest allHTTPHeaderFields];
+
+  uploadReqURLPath = @"gettysburgaddress.txt.location";
+  contentLength = [reqHdrs objectForKey:@"Content-Length"];
+  contentRange = [reqHdrs objectForKey:@"Content-Range"];
+
+  STAssertTrue([[[request URL] absoluteString] hasSuffix:uploadReqURLPath],
+               @"upload request wrong");
+  STAssertEqualObjects(contentLength, @"24499", @"content length");
+  STAssertEqualObjects(contentRange, @"bytes 174501-198999/199000", @"range");
+
+
+  //
+  // repeat the upload, and after sending 70000 bytes the progress
+  // callback will change the request URL for the next chunk fetch to make
+  // it fail with a retryable status error
+  //
+  [self resetFetchResponse];
+
+  fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
+                                                uploadData:bigData
+                                            uploadMIMEType:@"text/plain"
+                                                 chunkSize:75000];
+  fetcher.retryEnabled = YES;
+  fetcher.retrySelector = retrySel;
+  fetcher.sentDataSelector = progressSel;
+
+  // add a property to the fetcher that our progress callback will look for to
+  // know when to pause and resume the upload
+  [fetcher setProperty:[NSNumber numberWithInt:70000]
+                forKey:kRetryAtKey];
+
+  [fetcher beginFetchWithDelegate:self
+                didFinishSelector:finishedSel];
+
+  [self waitOnFetchCallback];
+
+  // check the request of the final chunk fetcher to be sure we were uploading
+  // chunks as expected.
+  reqHdrs = [fetcher.mutableRequest allHTTPHeaderFields];
+
+  uploadReqURLPath = @"gettysburgaddress.txt.location";
+  contentLength = [reqHdrs objectForKey:@"Content-Length"];
+  contentRange = [reqHdrs objectForKey:@"Content-Range"];
+
+  STAssertTrue([[[request URL] absoluteString] hasSuffix:uploadReqURLPath],
+               @"upload request wrong");
+  STAssertEqualObjects(contentLength, @"24499", @"content length");
+  STAssertEqualObjects(contentRange, @"bytes 174501-198999/199000", @"range");
+
+
+  //
+  // upload a small block
+  //
+  [self resetFetchResponse];
+
+  fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
+                                                uploadData:smallData
+                                            uploadMIMEType:@"text/plain"
+                                                 chunkSize:75000];
+
+  [fetcher beginFetchWithDelegate:self
+                didFinishSelector:finishedSel];
+
+  [self waitOnFetchCallback];
+
+  // check that we fetched the expected data
+  STAssertEqualObjects(fetchedData_, gettysburgAddress,
+                       @"Lincoln disappointed");
+  STAssertNotNil(fetchedResponse_,
+                 @"failed to get fetch response, status:%d error:%@",
+                 fetchedStatus_, fetcherError_);
+  STAssertNotNil(fetchedRequest_,
+                 @"failed to get fetch request, URL %@", urlString);
+  STAssertNil(fetcherError_, @"fetching data gave error: %@", fetcherError_);
+  STAssertEquals(fetchedStatus_, 200,
+                 @"unexpected status for URL %@", urlString);
+
+  // check the request of the final chunk fetcher to be sure we were uploading
+  // chunks as expected
+  reqHdrs = [fetcher.mutableRequest allHTTPHeaderFields];
+
+  uploadReqURLPath = @"gettysburgaddress.txt.location";
+  contentLength = [reqHdrs objectForKey:@"Content-Length"];
+  contentRange = [reqHdrs objectForKey:@"Content-Range"];
+
+  STAssertTrue([[[request URL] absoluteString] hasSuffix:uploadReqURLPath],
+               @"upload request wrong");
+  STAssertEqualObjects(contentLength, @"13", @"content length");
+  STAssertEqualObjects(contentRange, @"bytes 0-12/13", @"range");
+
+  //
+  // delete the big file
+  //
+  [[NSFileManager defaultManager] removeItemAtPath:bigFilePath error:NULL];
+}
+
 #pragma mark -
 
 - (GTMHTTPFetcher *)doFetchWithURLString:(NSString *)urlString
@@ -517,14 +837,8 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertTrue(isFetching, @"Begin fetch failed");
 
   if (isFetching) {
-    // Give time for the fetch to happen, but give up if 10 seconds elapse with no response
-    NSDate* giveUpDate = [NSDate dateWithTimeIntervalSinceNow:kGiveUpInterval];
-    while ((!fetchedData_ && !fetcherError_) && [giveUpDate timeIntervalSinceNow] > 0) {
-      NSDate* loopIntervalDate = [NSDate dateWithTimeIntervalSinceNow:kRunLoopInterval];
-      [[NSRunLoop currentRunLoop] runUntilDate:loopIntervalDate];
-    }  
+    [self waitOnFetchCallback];
   }
-
   return fetcher;
 }
 
@@ -569,6 +883,21 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   fetcherError_ = [error retain];
 }
 
+- (BOOL)waitOnFetchCallback {
+  // Give time for the fetch to happen, but give up if 10 seconds elapse with
+  // no response
+  //
+  // Return true if fetch completed, with data or error
+  NSDate* giveUpDate = [NSDate dateWithTimeIntervalSinceNow:kGiveUpInterval];
+
+  while ((!fetchedData_ && !fetcherError_)
+         && [giveUpDate timeIntervalSinceNow] > 0) {
+    NSDate* loopIntervalDate = [NSDate dateWithTimeIntervalSinceNow:kRunLoopInterval];
+    [[NSRunLoop currentRunLoop] runUntilDate:loopIntervalDate];
+  }
+
+  return (fetchedData_ != nil || fetcherError_ != nil);
+}
 
 // Selector for allowing up to N retries, where N is an NSNumber in the
 // fetcher's userData
