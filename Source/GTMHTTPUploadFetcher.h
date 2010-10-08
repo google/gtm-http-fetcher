@@ -92,7 +92,7 @@
             chunkSize:(NSUInteger)chunkSize;
 
 - (void)pauseFetching;
-- (void)resumeFetchingWithDelegate:(id)delegate;
+- (void)resumeFetching;
 - (BOOL)isPaused;
 
 @property (retain) NSURL *locationURL;

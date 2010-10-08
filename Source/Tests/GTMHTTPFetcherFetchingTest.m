@@ -42,9 +42,9 @@
   BOOL isServerRunning_;
 }
 
-- (void)testFetch;
-- (void)testWrongFetch;
-- (void)testRetryFetches;
+- (void)testFetcher:(GTMHTTPFetcher *)fetcher
+   finishedWithData:(NSData *)data
+              error:(NSError *)error;
 
 - (GTMHTTPFetcher *)doFetchWithURLString:(NSString *)urlString
                           cachingDatedData:(BOOL)doCaching;
@@ -506,9 +506,9 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
       [fetcher performSelector:@selector(pauseFetching)
                     withObject:nil
                     afterDelay:0.0];
-
-      [fetcher performSelector:@selector(resumeFetchingWithDelegate:)
-                    withObject:self
+      
+      [fetcher performSelector:@selector(resumeFetching)
+                    withObject:nil
                     afterDelay:1.0];
     }
   }
@@ -525,7 +525,6 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
       [fetcher setProperty:origURL forKey:kOriginalURLKey];
 
       NSString *newURLStr = [[origURL absoluteString] stringByAppendingString:@"?status=503"];
-
       fetcher.locationURL = [NSURL URLWithString:newURLStr];
     }
   }
@@ -621,7 +620,6 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   STAssertEqualObjects(contentLength, @"49000", @"content length");
   STAssertEqualObjects(contentRange, @"bytes 150000-198999/199000", @"range");
 
-
   //
   // repeat the big upload using NSData
   //
@@ -700,12 +698,59 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   STAssertEqualObjects(contentLength, @"24499", @"content length");
   STAssertEqualObjects(contentRange, @"bytes 174501-198999/199000", @"range");
 
+  
+  //
+  // repeat the big upload using blocks instead of a delegate,
+  // pausing after 20000 bytes
+  //
+  // for the blocks test, the body of the blocks will just invoke the non-block
+  // callback methods
+  //
+  [self resetFetchResponse];
+
+  fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
+                                                uploadData:bigData
+                                            uploadMIMEType:@"text/plain"
+                                                 chunkSize:75000];
+
+  [fetcher setSentDataBlock:^(NSInteger bytesSent, NSInteger totalBytesSent, NSInteger expectedBytes) {
+    [self uploadFetcher:fetcher
+           didSendBytes:bytesSent
+         totalBytesSent:totalBytesSent
+totalBytesExpectedToSend:expectedBytes];
+  }];
+
+  [fetcher setProperty:[NSNumber numberWithInt:20000]
+                forKey:kPauseAtKey];
+
+  [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
+    [self testFetcher:fetcher
+     finishedWithData:data
+                error:error];
+  }];
+
+  [self waitOnFetchCallback];
+
+  // check the request of the final chunk fetcher to be sure we were uploading
+  // chunks as expected.
+  reqHdrs = [fetcher.mutableRequest allHTTPHeaderFields];
+
+  uploadReqURLPath = @"gettysburgaddress.txt.location";
+  contentLength = [reqHdrs objectForKey:@"Content-Length"];
+  contentRange = [reqHdrs objectForKey:@"Content-Range"];
+
+  STAssertTrue([[[request URL] absoluteString] hasSuffix:uploadReqURLPath],
+               @"upload request wrong");
+  STAssertEqualObjects(contentLength, @"24499", @"content length");
+  STAssertEqualObjects(contentRange, @"bytes 174501-198999/199000", @"range");
+
 
   //
   // repeat the upload, and after sending 70000 bytes the progress
   // callback will change the request URL for the next chunk fetch to make
   // it fail with a retryable status error
   //
+
   [self resetFetchResponse];
 
   fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
@@ -717,7 +762,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   fetcher.sentDataSelector = progressSel;
 
   // add a property to the fetcher that our progress callback will look for to
-  // know when to pause and resume the upload
+  // know when to retry the upload
   [fetcher setProperty:[NSNumber numberWithInt:70000]
                 forKey:kRetryAtKey];
 
@@ -741,7 +786,58 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
 
 
   //
-  // upload a small block
+  // repeat the forced-retry upload, using blocks
+  //
+
+  [self resetFetchResponse];
+  fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
+                                                uploadData:bigData
+                                            uploadMIMEType:@"text/plain"
+                                                 chunkSize:75000];
+  fetcher.retryEnabled = YES;
+  [fetcher setRetryBlock:^(BOOL suggestedWillRetry, NSError *error) {
+    BOOL shouldRetry = [self uploadRetryFetcher:fetcher
+                                      willRetry:suggestedWillRetry
+                                       forError:error];
+    return shouldRetry;
+  }];
+
+  [fetcher setSentDataBlock:^(NSInteger bytesSent, NSInteger totalBytesSent, NSInteger expectedBytes) {
+    [self uploadFetcher:fetcher
+           didSendBytes:bytesSent
+         totalBytesSent:totalBytesSent
+totalBytesExpectedToSend:expectedBytes];
+  }];
+
+  // add a property to the fetcher that our progress callback will look for to
+  // know when to retry the upload
+  [fetcher setProperty:[NSNumber numberWithInt:70000]
+                forKey:kRetryAtKey];
+
+  [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
+    [self testFetcher:fetcher
+     finishedWithData:data
+                error:error];
+  }];
+   
+  [self waitOnFetchCallback];
+
+  // check the request of the final chunk fetcher to be sure we were uploading
+  // chunks as expected.
+  reqHdrs = [fetcher.mutableRequest allHTTPHeaderFields];
+
+  uploadReqURLPath = @"gettysburgaddress.txt.location";
+  contentLength = [reqHdrs objectForKey:@"Content-Length"];
+  contentRange = [reqHdrs objectForKey:@"Content-Range"];
+
+  STAssertTrue([[[request URL] absoluteString] hasSuffix:uploadReqURLPath],
+               @"upload request wrong");
+  STAssertEqualObjects(contentLength, @"24499", @"content length");
+  STAssertEqualObjects(contentRange, @"bytes 174501-198999/199000", @"range");
+
+
+  //
+  // upload a small buffer
   //
   [self resetFetchResponse];
 
@@ -783,7 +879,8 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   //
   // delete the big file
   //
-  [[NSFileManager defaultManager] removeItemAtPath:bigFilePath error:NULL];
+  [[NSFileManager defaultManager] removeItemAtPath:bigFilePath
+                                             error:NULL];
 }
 
 #pragma mark -

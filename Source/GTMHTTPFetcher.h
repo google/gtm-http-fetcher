@@ -301,8 +301,10 @@ void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
   // the same with and without blocks
   id completionPlaceholder_;
   id receivedDataPlaceholder_;
+  id sentDataPlaceholder_;
   id retryPlaceholder_;
 #endif
+  BOOL hasConnectionEnded_;         // set if the connection need not be cancelled
   BOOL isCancellingChallenge_;      // set only when cancelling an auth challenge
   BOOL isStopNotificationNeeded_;   // set when start notification has been sent
   id userData_;                     // retained, if set by caller

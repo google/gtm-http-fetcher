@@ -37,7 +37,8 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 //
 
 @interface GTMHTTPFetcher ()
-- (void)stopFetchReleasingBlocks:(BOOL)shouldReleaseBlocks;
+- (void)stopFetchReleasingCallbacks:(BOOL)shouldReleaseCallbacks;
+- (BOOL)shouldReleaseCallbacksUponCompletion;
 
 - (void)handleCookiesForResponse:(NSURLResponse *)response;
 - (void)setCookieStorage:(id <GTMCookieStorageProtocol> )obj;
@@ -48,7 +49,7 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
                      target:(id)target
                        data:(NSData *)data
                       error:(NSError *)error;
-- (void)releaseBlocks;
+- (void)releaseCallbacks;
 
 - (BOOL)shouldRetryNowForStatus:(NSInteger)status error:(NSError *)error;
 - (void)destroyRetryTimer;
@@ -111,7 +112,7 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
 #if !GTM_IPHONE
 - (void)finalize {
-  [self stopFetchReleasingBlocks:YES]; // releases connection_, destroys timers
+  [self stopFetchReleasingCallbacks:YES]; // releases connection_, destroys timers
   [super finalize];
 }
 #endif
@@ -264,6 +265,7 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
     }
     [connection_ start];
   }
+  hasConnectionEnded_ = NO;
 
   if (!connection_) {
     NSAssert(connection_ != nil, @"beginFetchWithDelegate could not create a connection");
@@ -306,10 +308,8 @@ CannotBeginFetch:
     if (completionBlock_) {
       completionBlock_(nil, error);
     }
-    [self releaseBlocks];
 #endif
-
-    [self setDelegate:nil];
+    [self releaseCallbacks];
   }
   return NO;
 }
@@ -361,7 +361,10 @@ CannotBeginFetch:
   return nil;
 }
 
-- (void)releaseBlocks {
+- (void)releaseCallbacks {
+  [delegate_ autorelease];
+  delegate_ = nil;
+
 #if NS_BLOCKS_AVAILABLE
   [completionBlock_ autorelease];
   completionBlock_ = nil;
@@ -373,7 +376,7 @@ CannotBeginFetch:
 }
 
 // Cancel the fetch of the URL that's currently in progress.
-- (void)stopFetchReleasingBlocks:(BOOL)shouldReleaseBlocks {
+- (void)stopFetchReleasingCallbacks:(BOOL)shouldReleaseCallbacks {
   // if the connection or the retry timer is all that's retaining the fetcher,
   // we want to be sure this instance survives stopping at least long enough for
   // the stack to unwind
@@ -388,29 +391,25 @@ CannotBeginFetch:
     NSURLConnection* oldConnection = connection_;
     connection_ = nil;
 
+    if (!hasConnectionEnded_) {
+      [oldConnection cancel];
+    }
+
     // this may be called in a callback from the connection, so use autorelease
-    [oldConnection cancel];
     [oldConnection autorelease];
 
     // send the stopped notification
     [self sendStopNotificationIfNeeded];
   }
 
-  // balance the retain done when the connection was opened, and prevent us
-  // from using the delegate again
-  [delegate_ autorelease];
-  delegate_ = nil;
-
-  // avoid a retain loop in case the blocks are referencing
-  // the fetcher instance
-  if (shouldReleaseBlocks) {
-    [self releaseBlocks];
+  if (shouldReleaseCallbacks) {
+    [self releaseCallbacks];
   }
 }
 
 // external stop method
 - (void)stopFetching {
-  [self stopFetchReleasingBlocks:YES];
+  [self stopFetchReleasingCallbacks:YES];
 }
 
 - (void)sendStopNotificationIfNeeded {
@@ -425,11 +424,9 @@ CannotBeginFetch:
 
 - (void)retryFetch {
 
-  id holdDelegate = [[delegate_ retain] autorelease];
+  [self stopFetchReleasingCallbacks:NO];
 
-  [self stopFetchReleasingBlocks:NO];
-
-  [self beginFetchWithDelegate:holdDelegate
+  [self beginFetchWithDelegate:delegate_
              didFinishSelector:finishedSEL_];
 }
 
@@ -748,6 +745,9 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+  // we no longer need to cancel the connection
+  hasConnectionEnded_ = YES;
+
   // skip caching ETagged results when the data is being saved to a file
   if (downloadFileHandle_ == nil) {
     [fetchHistory_ updateFetchHistoryWithRequest:request_
@@ -805,12 +805,18 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
     }
 #endif
 
-    [self stopFetching];
+    BOOL shouldRelease = [self shouldReleaseCallbacksUponCompletion];
+    [self stopFetchReleasingCallbacks:shouldRelease];
   }
 }
 
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+- (BOOL)shouldReleaseCallbacksUponCompletion {
+  // a subclass can override this to keep callbacks around after the
+  // connection has finished successfully
+  return YES;
+}
 
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
   // prevent the failure callback from being called twice, since the stopFetch
   // call below (either the explicit one at the end of this method, or the
   // implicit one when the retry occurs) will release the delegate
@@ -819,6 +825,9 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
   // if this method was invoked indirectly by cancellation of an authentication
   // challenge, defer this until it is called again with the proper error object
   if (isCancellingChallenge_) return;
+
+  // we no longer need to cancel the connection
+  hasConnectionEnded_ = YES;
 
   [self logNowWithError:error];
 
@@ -847,7 +856,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
     }
 #endif
 
-    [self stopFetchReleasingBlocks:YES];
+    [self stopFetchReleasingCallbacks:YES];
   }
 }
 

@@ -22,13 +22,14 @@
 
 #import "GTMHTTPUploadFetcher.h"
 
-static NSString* const kUploadFetcherRetainedDelegateKey =  @"_uploadDelegate";
-
 static NSUInteger const kQueryServerForOffset = NSUIntegerMax;
 
+@interface GTMHTTPFetcher (ProtectedMethods)
+- (void)releaseCallbacks;
+@end
+
 @interface GTMHTTPUploadFetcher ()
-- (void)uploadNextChunkWithOffset:(NSUInteger)offset
-                         delegate:(id)delegate;
+- (void)uploadNextChunkWithOffset:(NSUInteger)offset;
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset
                 fetcherProperties:(NSDictionary *)props;
 - (void)destroyChunkFetcher;
@@ -128,6 +129,8 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 }
 
 - (void)dealloc {
+  [self releaseCallbacks];
+
   [chunkFetcher_ release];
   [locationURL_ release];
   [uploadData_ release];
@@ -178,14 +181,6 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 
   AssertSelectorNilOrImplementedWithArguments(delegate, finishedSEL, @encode(GTMHTTPFetcher *), @encode(NSData *), @encode(NSError *), 0);
 
-  // we don't support block callbacks since retaining them across pauses
-  // would be messy
-#if DEBUG && NS_BLOCKS_AVAILABLE
-  NSAssert(completionBlock_ == NULL && sentDataBlock_ == NULL
-           && retryBlock_ == NULL && receivedDataBlock_ == NULL,
-           @"block callbacks not supported by upload fetcher");
-#endif
-
   // replace the finishedSEL with our own, since the initial finish callback
   // is just the beginning of the upload experience
   delegateFinishedSEL_ = finishedSEL;
@@ -203,6 +198,31 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
                      didFinishSelector:NULL];
 }
 
+#if NS_BLOCKS_AVAILABLE
+- (BOOL)beginFetchWithCompletionHandler:(void (^)(NSData *data, NSError *error))handler {
+  // we don't want to call into the delegate's completion block immediately
+  // after the finish of the initial connection (the delegate is called only
+  // when uploading finishes), so we substitute our own completion block to be
+  // called when the initial connection finishes
+  void (^holdBlock)(NSData *data, NSError *error) = [[handler copy] autorelease];
+
+  BOOL flag = [super beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
+    // note that this block will magically retain holdBlock for us since it's
+    // referenced in this block's body.  Blocks are evil that way.
+    if (error == nil) {
+      // swap in the actual completion block now, as it will be called later
+      // when the upload chunks have completed
+      [completionBlock_ autorelease];
+      completionBlock_ = [holdBlock copy];
+    } else {
+      // pass the error on to the actual completion block
+      holdBlock(nil, error);
+    }
+  }];
+  return flag;
+}
+#endif
+
 - (void)connection:(NSURLConnection *)connection
    didSendBodyData:(NSInteger)bytesWritten
  totalBytesWritten:(NSInteger)totalBytesWritten
@@ -219,17 +239,41 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 totalBytesExpectedToSend:totalBytesExpectedToWrite];
 }
 
+- (BOOL)shouldReleaseCallbacksUponCompletion {
+  // we don't want the superclass to release the delegate and callback
+  // blocks once the initial fetch has finished
+  //
+  // this is invoked for only successful completion of the connection;
+  // an error always will invoke and release the callbacks
+  return NO;
+}
+
+- (void)invokeFinalCallbacksWithData:(NSData *)data error:(NSError *)error {
+  // avoid issues due to being released indirectly by a callback
+  [[self retain] autorelease];
+
+  if (delegate_ && delegateFinishedSEL_) {
+    [self invokeFetchCallback:delegateFinishedSEL_
+                       target:delegate_
+                         data:data
+                        error:error];
+  }
+
+#if NS_BLOCKS_AVAILABLE
+  if (completionBlock_) {
+    completionBlock_(nil, error);
+  }
+#endif
+
+  [self releaseCallbacks];
+}
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
 
   // we land here once the initial fetch sending the initial POST body
   // has completed
 
-  // we keep the delegate retained for as long as we have chunk fetchers
-  // pending (but holding it in their properties); otherwise, it would
-  // be released by our superclass when the connectionDidFinishLoading is called
-  id uploadDelegate = [[[self delegate] retain] autorelease];
-
+  // let the superclass end its connection
   [super connectionDidFinishLoading:connection];
 
   NSInteger statusCode = [super statusCode];
@@ -255,16 +299,11 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
     // as our upload destination
     //
     // we'll consider this status 501 Not Implemented
-    if (finishedSEL_) {
-      NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
-                                  code:501
-                              userInfo:nil];
-
-      [self invokeFetchCallback:finishedSEL_
-                         target:uploadDelegate
-                           data:[self downloadedData]
-                          error:error];
-    }
+    NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
+                                         code:501
+                                     userInfo:nil];
+    [self invokeFinalCallbacksWithData:[self downloadedData]
+                                 error:error];
     return;
   }
 
@@ -280,24 +319,15 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
 
   // just in case the user paused us during the initial fetch...
   if (![self isPaused]) {
-    [self uploadNextChunkWithOffset:0
-                           delegate:uploadDelegate];
+    [self uploadNextChunkWithOffset:0];
   }
 }
 
 #pragma mark Chunk fetching methods
 
-- (void)uploadNextChunkWithOffset:(NSUInteger)offset
-                         delegate:(id)delegate {
-  NSMutableDictionary *props;
-
-  // we'll retain the delegate as part of the chunk fetcher properties;
-  // once there is no longer an active chunk fetcher, we do not need
-  // to be retaining the delegate since we won't be calling back into it
-  props = [NSMutableDictionary dictionaryWithDictionary:[self properties]];
-
-  [props setValue:delegate
-           forKey:kUploadFetcherRetainedDelegateKey];
+- (void)uploadNextChunkWithOffset:(NSUInteger)offset {
+  // use the properties in each chunk fetcher
+  NSDictionary *props = [self properties];
 
   [self uploadNextChunkWithOffset:offset
                 fetcherProperties:props];
@@ -414,13 +444,8 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
                                          code:kGTMHTTPFetcherErrorChunkUploadFailed
                                      userInfo:nil];
 
-    id delegate = [props valueForKey:kUploadFetcherRetainedDelegateKey];
-    if (delegate && finishedSEL_) {
-      [self invokeFetchCallback:finishedSEL_
-                         target:delegate
-                           data:nil
-                          error:error];
-    }
+    [self invokeFinalCallbacksWithData:nil
+                                 error:error];
     [self destroyChunkFetcher];
   } else {
     // hang on to the fetcher in case we need to cancel it
@@ -447,8 +472,6 @@ totalBytesExpectedToSend:0];
   [self setStatusCode:[chunkFetcher statusCode]];
   [self setResponseHeaders:[chunkFetcher responseHeaders]];
 
-  id delegate = [chunkFetcher propertyForKey:kUploadFetcherRetainedDelegateKey];
-
   if (error) {
     int status = [error code];
 
@@ -462,17 +485,11 @@ totalBytesExpectedToSend:0];
     } else {
       // some unexpected status has occurred; handle it as we would a regular
       // object fetcher failure
-      if (delegate && finishedSEL_) {
-        error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
-                                    code:status
-                                userInfo:nil];
-
-        // not retrying, call status failure callback
-        [self invokeFetchCallback:finishedSEL_
-                                target:delegate
-                             data:data
-                            error:error];
-      }
+      error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
+                                  code:status
+                              userInfo:nil];
+      [self invokeFinalCallbacksWithData:data
+                                   error:error];
       [self destroyChunkFetcher];
       return;
     }
@@ -497,13 +514,9 @@ totalBytesExpectedToSend:0];
     }
 
     // we're done
-    if (delegate && delegateFinishedSEL_) {
-      [self invokeFetchCallback:delegateFinishedSEL_
-                         target:delegate
-                           data:data
-                          error:nil];
-    }
-
+    [self invokeFinalCallbacksWithData:data
+                                 error:nil];
+    
     [self destroyChunkFetcher];
   }
 }
@@ -568,16 +581,21 @@ totalBytesExpectedToSend:0];
     return NO;
   }
 
-  id delegate = [chunkFetcher propertyForKey:kUploadFetcherRetainedDelegateKey];
-  if (delegate && retrySEL_) {
+  if (delegate_ && retrySEL_) {
 
     // call the client with the upload fetcher as the sender (not the chunk
     // fetcher) to find out if it wants to retry
     willRetry = [self invokeRetryCallback:retrySEL_
-                                   target:delegate
+                                   target:delegate_
                                 willRetry:willRetry
                                     error:error];
   }
+  
+#if NS_BLOCKS_AVAILABLE
+  if (retryBlock_) {
+    willRetry = retryBlock_(willRetry, error);
+  }
+#endif  
 
   if (willRetry) {
     // change the request being retried into a query to the server to
@@ -602,31 +620,40 @@ totalBytesExpectedToSend:0];
 - (void)destroyChunkFetcher {
   [chunkFetcher_ stopFetching];
   [chunkFetcher_ setProperties:nil];
-  [self setChunkFetcher:nil];
+  [chunkFetcher_ autorelease];
+  chunkFetcher_ = nil;
 }
 
 // the chunk fetchers use this as their sentData method
-- (void)uploadFetcher:(GTMHTTPFetcher *)fetcher
+- (void)uploadFetcher:(GTMHTTPFetcher *)chunkFetcher
          didSendBytes:(NSInteger)bytesSent
        totalBytesSent:(NSInteger)totalBytesSent
 totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
-
-  id delegate = [fetcher propertyForKey:kUploadFetcherRetainedDelegateKey];
-  if (delegate && delegateSentDataSEL_) {
-    // the actual total bytes sent include the initial XML sent, plus the
-    // offset into the batched data prior to this fetcher
-    totalBytesSent += initialBodySent_ + currentOffset_;
-
-    // the total bytes expected include the initial XML and the full chunked
-    // data, independent of how big this fetcher's chunk is
-    totalBytesExpected = initialBodyLength_ + [self fullUploadLength];
-
+  // the actual total bytes sent include the initial XML sent, plus the
+  // offset into the batched data prior to this fetcher
+  totalBytesSent += initialBodySent_ + currentOffset_;
+  
+  // the total bytes expected include the initial XML and the full chunked
+  // data, independent of how big this fetcher's chunk is
+  totalBytesExpected = initialBodyLength_ + [self fullUploadLength];
+  
+  if (delegate_ && delegateSentDataSEL_) {
+    // ensure the chunk fetcher survives the callback in case the user pauses
+    // the upload process
+    [[chunkFetcher retain] autorelease];
+    
     [self invokeSentDataCallback:delegateSentDataSEL_
-                          target:delegate
+                          target:delegate_
                  didSendBodyData:bytesSent
                totalBytesWritten:totalBytesSent
        totalBytesExpectedToWrite:totalBytesExpected];
   }
+  
+#if NS_BLOCKS_AVAILABLE
+  if (sentDataBlock_) {
+    sentDataBlock_(bytesSent, totalBytesSent, totalBytesExpected);
+  }
+#endif  
 }
 
 #pragma mark -
@@ -649,17 +676,11 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
   [self destroyChunkFetcher];
 }
 
-- (void)resumeFetchingWithDelegate:(id)delegate {
+- (void)resumeFetching {
   if (isPaused_) {
     isPaused_ = NO;
 
-    // since we'll be retaining the delegate when we start uploading,
-    // we require it as an argument to avoid relying on the unretained
-    // one we already have
-    [self setDelegate:delegate];
-
-    [self uploadNextChunkWithOffset:kQueryServerForOffset
-                           delegate:delegate];
+    [self uploadNextChunkWithOffset:kQueryServerForOffset];
   }
 }
 
@@ -718,7 +739,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
 
 - (SEL)sentDataSelector {
   // overrides the superclass
-  if (delegateSentDataSEL_ && !needsManualProgress_) {
+  if ((delegateSentDataSEL_ || sentDataBlock_) && !needsManualProgress_) {
     return @selector(uploadFetcher:didSendBytes:totalBytesSent:totalBytesExpectedToSend:);
   } else {
     return NULL;

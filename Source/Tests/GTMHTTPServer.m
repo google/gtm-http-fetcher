@@ -22,6 +22,8 @@
 #import <sys/socket.h>
 #import <unistd.h>
 
+#import <Foundation/Foundation.h>
+
 #define GTMHTTPSERVER_DEFINE_GLOBALS
 #import "GTMHTTPServer.h"
 
