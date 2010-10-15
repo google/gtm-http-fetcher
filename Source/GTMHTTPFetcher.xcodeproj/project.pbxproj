@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4F2FCAC41267882800A74543 /* GTMHTTPFetcherUtilityTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F2FCAC31267882800A74543 /* GTMHTTPFetcherUtilityTest.m */; };
 		4F3471FB11DD58D700CB050E /* GTMGatherInputStream.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F3471F211DD58D700CB050E /* GTMGatherInputStream.m */; };
 		4F3471FC11DD58D700CB050E /* GTMHTTPFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F3471F411DD58D700CB050E /* GTMHTTPFetcher.m */; };
 		4F3471FD11DD58D700CB050E /* GTMHTTPFetcherLogging.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F3471F611DD58D700CB050E /* GTMHTTPFetcherLogging.m */; };
@@ -44,6 +45,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4F2FCAC31267882800A74543 /* GTMHTTPFetcherUtilityTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMHTTPFetcherUtilityTest.m; path = Tests/GTMHTTPFetcherUtilityTest.m; sourceTree = "<group>"; };
 		4F3471F111DD58D700CB050E /* GTMGatherInputStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMGatherInputStream.h; sourceTree = "<group>"; };
 		4F3471F211DD58D700CB050E /* GTMGatherInputStream.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTMGatherInputStream.m; sourceTree = "<group>"; };
 		4F3471F311DD58D700CB050E /* GTMHTTPFetcher.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMHTTPFetcher.h; sourceTree = "<group>"; };
@@ -137,6 +139,7 @@
 			children = (
 				4F74DAF711E7C7C900F2D927 /* GTMHTTPFetcherFetchingTest.m */,
 				4F74DAFB11E7C7CF00F2D927 /* GTMHTTPFetcherCachingTest.m */,
+				4F2FCAC31267882800A74543 /* GTMHTTPFetcherUtilityTest.m */,
 				4FCC71F611EBF5970097924C /* GTMGatherInputStreamTest.m */,
 				4F74D94911E68C1500F2D927 /* GTMMIMEDocumentTest.m */,
 				4FCC71A911EBEFBF0097924C /* Server */,
@@ -265,6 +268,7 @@
 				4FCC71F711EBF5970097924C /* GTMGatherInputStreamTest.m in Sources */,
 				4FCC75E511EE6B1C0097924C /* GTMHTTPFetcherService.m in Sources */,
 				4FCC787A11EFA6030097924C /* GTMHTTPFetchHistory.m in Sources */,
+				4F2FCAC41267882800A74543 /* GTMHTTPFetcherUtilityTest.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

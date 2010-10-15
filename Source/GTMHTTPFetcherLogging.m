@@ -58,6 +58,10 @@
 + (BOOL)removeItemAtPath:(NSString *)path;
 + (BOOL)createSymbolicLinkAtPath:(NSString *)newPath
              withDestinationPath:(NSString *)targetPath;
+
++ (NSString *)snipSubtringOfString:(NSString *)originalStr
+                betweenStartString:(NSString *)startStr
+                         endString:(NSString *)endStr;  
 @end
 
 @implementation GTMHTTPFetcher (GTMHTTPFetcherLogging)
@@ -633,10 +637,11 @@ static NSString* gLoggingProcessName = nil;
         postDataTextAreaFmt =  @"<textarea rows=\"15\" cols=\"100\""
          " readonly=true wrap=soft>\n%@\n</textarea>";
       }
-      NSString *cleanedPostData = [self cleanParameterFollowing:@"&Passwd="
-                                                     fromString:postDataStr];
+      postDataStr = [[self class] snipSubtringOfString:postDataStr
+                                    betweenStartString:@"&Passwd="
+                                             endString:@"&"];
       NSString *postDataTextArea = [NSString stringWithFormat:
-        postDataTextAreaFmt,  cleanedPostData];
+        postDataTextAreaFmt, postDataStr];
 
       [outputHTML appendFormat:postDataFormat,
         postDataName, // layer name
@@ -912,6 +917,40 @@ static NSString* gLoggingProcessName = nil;
 
 #pragma mark Formatting utilities
 
++ (NSString *)snipSubtringOfString:(NSString *)originalStr
+                betweenStartString:(NSString *)startStr
+                         endString:(NSString *)endStr {
+
+  if (originalStr == nil) return nil;
+
+  // find the start string, and replace everything between it
+  // and the end string (or the end of the original string) with "_snip_"
+  NSRange startRange = [originalStr rangeOfString:startStr];
+  if (startRange.location == NSNotFound) return originalStr;
+
+  // we found the start string
+  NSUInteger originalLength = [originalStr length];
+  NSUInteger startOfTarget = NSMaxRange(startRange);
+  NSRange targetAndRest = NSMakeRange(startOfTarget,
+                                      originalLength - startOfTarget);
+  NSRange endRange = [originalStr rangeOfString:endStr
+                                        options:0
+                                          range:targetAndRest];
+  NSRange replaceRange;
+  if (endRange.location == NSNotFound) {
+    // found no end marker so replace to end of string
+    replaceRange = targetAndRest;
+  } else {
+    // replace up to the endStr
+    replaceRange = NSMakeRange(startOfTarget,
+                               endRange.location - startOfTarget);
+  }
+
+  NSString *result = [originalStr stringByReplacingCharactersInRange:replaceRange
+                                                          withString:@"_snip_"];
+  return result;
+}
+
 + (NSString *)headersStringForDictionary:(NSDictionary *)dict {
   // format the dictionary in http header style, like
   //   Accept:        application/json
@@ -927,6 +966,11 @@ static NSString* gLoggingProcessName = nil;
   NSMutableString *str = [NSMutableString string];
   for (NSString *key in keys) {
     NSString *value = [dict valueForKey:key];
+    if ([key isEqual:@"Authorization"]) {
+      value = [[self class] snipSubtringOfString:value
+                              betweenStartString:@"oauth_token=\""
+                                       endString:@"\""];
+    }
     [str appendFormat:@"%*s: %@\n", maxKeyLen, [key UTF8String], value];
   }
   return str;

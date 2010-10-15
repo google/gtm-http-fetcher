@@ -14,7 +14,7 @@
  */
 
 //
-//  GTMFetcherTest.m
+//  GTMHTTPFetcherCachingTest.m
 //
 
 #import <SenTestingKit/SenTestingKit.h>
@@ -53,10 +53,10 @@
 - (void)removeAllCookies;
 @end
 
-@interface GTMFetcherTest : SenTestCase
+@interface GTMHTTPFetcherCachingTest : SenTestCase
 @end
 
-@implementation GTMFetcherTest
+@implementation GTMHTTPFetcherCachingTest
 
 - (void)testURLCache {
   // allocate a cache that prunes at 30 bytes of response data
