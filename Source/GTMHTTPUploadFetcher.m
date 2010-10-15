@@ -739,7 +739,12 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
 
 - (SEL)sentDataSelector {
   // overrides the superclass
-  if ((delegateSentDataSEL_ || sentDataBlock_) && !needsManualProgress_) {
+#if NS_BLOCKS_AVAILABLE
+  BOOL hasSentDataBlock = (sentDataBlock_ != NULL);
+#else
+  BOOL hasSentDataBlock = NO;
+#endif
+  if ((delegateSentDataSEL_ || hasSentDataBlock) && !needsManualProgress_) {
     return @selector(uploadFetcher:didSendBytes:totalBytesSent:totalBytesExpectedToSend:);
   } else {
     return NULL;
