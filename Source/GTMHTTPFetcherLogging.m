@@ -174,6 +174,7 @@ static NSString* gLoggingProcessName = nil;
 // and a plain string for other input data
 - (NSString *)formattedStringFromData:(NSData *)inputData
                           contentType:(NSString *)contentType {
+  if (inputData == nil) return nil;
 
   // if the content type is JSON and we have the parsing class available,
   // use that
@@ -438,7 +439,12 @@ static NSString* gLoggingProcessName = nil;
 
   // file name for the "formatted" (raw) data file
   NSString *responseDataFormattedFileName = nil;
-  NSUInteger responseDataLength = [downloadedData_ length];
+  NSUInteger responseDataLength;
+  if (downloadFileHandle_) {
+    responseDataLength = [downloadFileHandle_ offsetInFile];
+  } else {
+    responseDataLength = [downloadedData_ length];
+  }
 
   NSURLResponse *response = [self response];
   NSDictionary *responseHeaders = [self responseHeaders];
@@ -448,7 +454,7 @@ static NSString* gLoggingProcessName = nil;
 
   // if there's response data, decide what kind of file to put it in based
   // on the first bytes of the file or on the mime type supplied by the server
-  if (responseDataLength) {
+  if (responseDataLength > 0) {
     NSString *responseDataExtn = nil;
 
     // generate a response file base name like
@@ -511,7 +517,7 @@ static NSString* gLoggingProcessName = nil;
 
     // if we have an extension, save the raw data in a file with that
     // extension to be our "formatted" display file
-    if (responseDataExtn) {
+    if (responseDataExtn && downloadedData_) {
       responseDataFormattedFileName = [responseBaseName stringByAppendingPathExtension:responseDataExtn];
       NSString *formattedFilePath = [logDirectory stringByAppendingPathComponent:responseDataFormattedFileName];
 
