@@ -165,9 +165,9 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
 - (BOOL)beginFetchWithDelegate:(id)delegate
              didFinishSelector:(SEL)finishedSEL {
-  AssertSelectorNilOrImplementedWithArguments(delegate, finishedSEL, @encode(GTMHTTPFetcher *), @encode(NSData *), @encode(NSError *), 0);
-  AssertSelectorNilOrImplementedWithArguments(delegate, receivedDataSEL_, @encode(GTMHTTPFetcher *), @encode(NSData *), 0);
-  AssertSelectorNilOrImplementedWithArguments(delegate, retrySEL_, @encode(GTMHTTPFetcher *), @encode(BOOL), @encode(NSError *), 0);
+  GTMAssertSelectorNilOrImplementedWithArgs(delegate, finishedSEL, @encode(GTMHTTPFetcher *), @encode(NSData *), @encode(NSError *), 0);
+  GTMAssertSelectorNilOrImplementedWithArgs(delegate, receivedDataSEL_, @encode(GTMHTTPFetcher *), @encode(NSData *), 0);
+  GTMAssertSelectorNilOrImplementedWithArgs(delegate, retrySEL_, @encode(GTMHTTPFetcher *), @encode(BOOL), @encode(NSError *), 0);
 
   if (connection_ != nil) {
     NSAssert1(connection_ != nil, @"fetch object %@ being reused; this should never happen", self);
@@ -1241,7 +1241,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 #define Debugger()
 #endif
 
-void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...) {
+void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...) {
 
   // verify that the object's selector is implemented with the proper
   // number and type of arguments

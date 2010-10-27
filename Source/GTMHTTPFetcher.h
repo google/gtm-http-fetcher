@@ -256,7 +256,7 @@ enum {
   kGTMHTTPFetcherCookieStorageMethodNone = 3
 };
 
-void AssertSelectorNilOrImplementedWithArguments(id obj, SEL sel, ...);
+void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 
 @protocol GTMCookieStorageProtocol <NSObject>
 - (NSArray *)cookiesForURL:(NSURL *)theURL;

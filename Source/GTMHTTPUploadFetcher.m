@@ -179,7 +179,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 - (BOOL)beginFetchWithDelegate:(id)delegate
              didFinishSelector:(SEL)finishedSEL {
 
-  AssertSelectorNilOrImplementedWithArguments(delegate, finishedSEL, @encode(GTMHTTPFetcher *), @encode(NSData *), @encode(NSError *), 0);
+  GTMAssertSelectorNilOrImplementedWithArgs(delegate, finishedSEL, @encode(GTMHTTPFetcher *), @encode(NSData *), @encode(NSError *), 0);
 
   // replace the finishedSEL with our own, since the initial finish callback
   // is just the beginning of the upload experience
