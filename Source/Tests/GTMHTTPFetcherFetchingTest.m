@@ -58,8 +58,6 @@
 
 - (NSString *)localURLStringToTestFileName:(NSString *)name;
 - (NSString *)localPathForFileName:(NSString *)name;
-
-- (BOOL)waitOnFetchCallback;
 @end
 
 @implementation GTMHTTPFetcherFetchingTest
@@ -324,11 +322,8 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertEquals(retryDelayStoppedNotificationCount_, 0, @"retries started");
 }
 
-- (void)testFetchToFileHandle {
+- (void)testFetchToFile {
   if (!isServerRunning_) return;
-
-  [self resetFetchResponse];
-  [self resetNotificationCounts];
 
   // create an empty file from which we can make an NSFileHandle
   NSString *path = [NSTemporaryDirectory() stringByAppendingFormat:@"fhTest_%u",
@@ -339,58 +334,134 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertNotNil(fileHandle, @"missing filehandle for %@", path);
 
   // make the http request to our test server
+  __block NSString *testName = @"Download to file handle";
+
   NSString *urlString = [self localURLStringToTestFileName:kValidFileName];
   NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:urlString]
                                        cachePolicy:NSURLRequestReloadIgnoringCacheData
                                    timeoutInterval:kGiveUpInterval];
-  GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
-  STAssertNotNil(fetcher, @"Failed to allocate fetcher");
 
-  [fetcher setDownloadFileHandle:fileHandle];
+  // we'll put fetcher in a __block variable so we can refer to the
+  // latest instance of it in the callbacks
+  __block GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  STAssertNotNil(fetcher, @"Failed to allocate fetcher");
 
   // received-data block
   //
   // the final received-data block invocation should show the length of the
   // file actually downloaded
   __block NSUInteger receivedDataLen = 0;
-  [fetcher setReceivedDataBlock:^(NSData *dataReceivedSoFar) {
+
+  void (^receivedBlock)(NSData *) = ^(NSData *dataReceivedSoFar){
     // a nil data argument is expected when the downloaded data is written
     // to a file handle
-    STAssertNil(dataReceivedSoFar, @"unexpected dataReceivedSoFar");
+    STAssertNil(dataReceivedSoFar, @"%@: unexpected dataReceivedSoFar",
+                testName);
 
-    receivedDataLen = [fileHandle offsetInFile];
-  }];
+    receivedDataLen = [fetcher downloadedLength];
+  };
+
 
   // fetch & completion block
   __block BOOL hasFinishedFetching = NO;
-  [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
-    STAssertNil(data, @"unexpected data");
-    STAssertNil(error, @"unexpected error: %@", error);
+
+  void (^completionBlock)(NSData *, NSError *) = ^(NSData *data, NSError *error) {
+    STAssertNil(data, @"%@: unexpected data", testName);
+    STAssertNil(error, @"%@: unexpected error: %@", testName, error);
 
     NSString *fetchedContents = [NSString stringWithContentsOfFile:path
                                                           encoding:NSUTF8StringEncoding
                                                              error:NULL];
     STAssertEquals(receivedDataLen, [fetchedContents length],
-                   @"length issue");
+                   @"%@: length issue", testName);
 
     NSString *origPath = [self localPathForFileName:kValidFileName];
     NSString *origContents = [NSString stringWithContentsOfFile:origPath
                                                        encoding:NSUTF8StringEncoding
                                                           error:NULL];
-    STAssertEqualObjects(fetchedContents, origContents, @"fetch to FH error");
+    STAssertEqualObjects(fetchedContents, origContents,
+                         @"%@: fetch to FH error", testName);
 
     hasFinishedFetching = YES;
-  }];
+  };
+
+  [fetcher setDownloadFileHandle:fileHandle];
+  [fetcher setReceivedDataBlock:receivedBlock];
+  [fetcher beginFetchWithCompletionHandler:completionBlock];
 
   // spin until the fetch completes
-  NSDate* giveUpDate = [NSDate dateWithTimeIntervalSinceNow:kGiveUpInterval];
-  while ((!hasFinishedFetching) && [giveUpDate timeIntervalSinceNow] > 0) {
-    NSDate* loopIntervalDate = [NSDate dateWithTimeIntervalSinceNow:kRunLoopInterval];
-    [[NSRunLoop currentRunLoop] runUntilDate:loopIntervalDate];
-  }
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+  STAssertTrue(hasFinishedFetching, @"file handle fetch timed out");
 
   [[NSFileManager defaultManager] removeItemAtPath:path
                                              error:NULL];
+
+  //
+  // repeat the test with a new fetcher, writing directly to the path
+  // instead of explicitly creating a file handle
+  //
+  hasFinishedFetching = NO;
+
+  testName = @"Download to file path";
+  fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  [fetcher setDownloadPath:path];
+  [fetcher setReceivedDataBlock:receivedBlock];
+  [fetcher beginFetchWithCompletionHandler:completionBlock];
+
+  // grab a copy of the temporary file path
+  NSString *tempPath = [[[fetcher performSelector:@selector(temporaryDownloadPath)] copy] autorelease];
+
+  // spin until the fetch completes
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+  STAssertTrue(hasFinishedFetching, @"path fetch timed out");
+
+  // verify that the temp file has been deleted
+  BOOL doesExist = [[NSFileManager defaultManager] fileExistsAtPath:tempPath];
+  STAssertFalse(doesExist, @"%@: temp file should not exist", testName);
+
+  [[NSFileManager defaultManager] removeItemAtPath:path
+                                             error:NULL];
+  
+  //
+  // repeat the test with a new fetcher, writing directly to a path,
+  // but with a fetch that will fail
+  //
+  hasFinishedFetching = NO;
+
+  testName = @"Invalid download to file path";
+  NSString *invalidFile = [kValidFileName stringByAppendingString:@"?status=400"];
+  urlString = [self localURLStringToTestFileName:invalidFile];
+  req = [NSURLRequest requestWithURL:[NSURL URLWithString:urlString]
+                         cachePolicy:NSURLRequestReloadIgnoringCacheData
+                     timeoutInterval:kGiveUpInterval];
+  fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  [fetcher setDownloadPath:path];
+  [fetcher setReceivedDataBlock:receivedBlock];
+
+  [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
+    STAssertNil(data, @"%@: unexpected data", testName);
+    STAssertEquals([error code], 400,
+                   @"%@: unexpected error: %@", testName, error);
+    hasFinishedFetching = YES;
+  }];
+
+  // grab a copy of the temporary file path
+  tempPath = [[[fetcher performSelector:@selector(temporaryDownloadPath)] copy] autorelease];
+  
+  // spin until the fetch completes
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+  STAssertTrue(hasFinishedFetching, @"path fetch timed out");
+
+  // the file at the temporary path should be gone, and none should be at
+  // the final path
+  //
+  // we test it here rather than in the callback since it's not deleted
+  // until the fetcher does its stopFetching cleanup
+  doesExist = [[NSFileManager defaultManager] fileExistsAtPath:tempPath];
+  STAssertFalse(doesExist, @"%@: temp file should not exist", testName);
+
+  doesExist = [[NSFileManager defaultManager] fileExistsAtPath:path];
+  STAssertFalse(doesExist, @"%@: file should not exist", testName);
 }
 
 - (void)testRetryFetches {
@@ -587,7 +658,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
 
-  [self waitOnFetchCallback];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
 
 
   STAssertNotNil(fetchedData_,
@@ -637,7 +708,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
 
-  [self waitOnFetchCallback];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
 
   // check that we fetched the expected data
   STAssertEqualObjects(fetchedData_, gettysburgAddress,
@@ -683,7 +754,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
 
-  [self waitOnFetchCallback];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
 
   // check the request of the final chunk fetcher to be sure we were uploading
   // chunks as expected.
@@ -729,7 +800,7 @@ totalBytesExpectedToSend:expectedBytes];
                 error:error];
   }];
 
-  [self waitOnFetchCallback];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
 
   // check the request of the final chunk fetcher to be sure we were uploading
   // chunks as expected.
@@ -769,7 +840,7 @@ totalBytesExpectedToSend:expectedBytes];
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
 
-  [self waitOnFetchCallback];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
 
   // check the request of the final chunk fetcher to be sure we were uploading
   // chunks as expected.
@@ -820,7 +891,7 @@ totalBytesExpectedToSend:expectedBytes];
                 error:error];
   }];
    
-  [self waitOnFetchCallback];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
 
   // check the request of the final chunk fetcher to be sure we were uploading
   // chunks as expected.
@@ -849,7 +920,7 @@ totalBytesExpectedToSend:expectedBytes];
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
 
-  [self waitOnFetchCallback];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
 
   // check that we fetched the expected data
   STAssertEqualObjects(fetchedData_, gettysburgAddress,
@@ -934,7 +1005,7 @@ totalBytesExpectedToSend:expectedBytes];
   STAssertTrue(isFetching, @"Begin fetch failed");
 
   if (isFetching) {
-    [self waitOnFetchCallback];
+    [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
   }
   return fetcher;
 }
@@ -980,21 +1051,6 @@ totalBytesExpectedToSend:expectedBytes];
   fetcherError_ = [error retain];
 }
 
-- (BOOL)waitOnFetchCallback {
-  // Give time for the fetch to happen, but give up if 10 seconds elapse with
-  // no response
-  //
-  // Return true if fetch completed, with data or error
-  NSDate* giveUpDate = [NSDate dateWithTimeIntervalSinceNow:kGiveUpInterval];
-
-  while ((!fetchedData_ && !fetcherError_)
-         && [giveUpDate timeIntervalSinceNow] > 0) {
-    NSDate* loopIntervalDate = [NSDate dateWithTimeIntervalSinceNow:kRunLoopInterval];
-    [[NSRunLoop currentRunLoop] runUntilDate:loopIntervalDate];
-  }
-
-  return (fetchedData_ != nil || fetcherError_ != nil);
-}
 
 // Selector for allowing up to N retries, where N is an NSNumber in the
 // fetcher's userData

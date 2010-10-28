@@ -37,6 +37,10 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 //
 
 @interface GTMHTTPFetcher ()
+@property (copy) NSString *temporaryDownloadPath;
+
+- (NSString *)createTempDownloadFilePathForPath:(NSString *)targetPath;
+- (NSFileManager *)fileManager;
 - (void)stopFetchReleasingCallbacks:(BOOL)shouldReleaseCallbacks;
 - (BOOL)shouldReleaseCallbacksUponCompletion;
 
@@ -125,6 +129,8 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
   [request_ release];
   [connection_ release];
   [downloadedData_ release];
+  [downloadPath_ release];
+  [temporaryDownloadPath_ release];
   [downloadFileHandle_ release];
   [credential_ release];
   [proxyCredential_ release];
@@ -152,22 +158,16 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
 #pragma mark -
 
-// Begin fetching the URL.  The delegate is retained for the duration of
-// the fetch connection.
-//
-// The delegate must provide and implement the finished and failed selectors.
-//
-// finishedSEL has a signature like:
-//   - (void)fetcher:(GTMHTTPFetcher *)fetcher finishedWithData:(NSData *)data error:(NSError *)error;
-//
-// Server errors (status >= 300) are reported as the code of the error object.
-
+// Begin fetching the URL (or begin a retry fetch).  The delegate is retained
+// for the duration of the fetch connection.
 
 - (BOOL)beginFetchWithDelegate:(id)delegate
              didFinishSelector:(SEL)finishedSEL {
   GTMAssertSelectorNilOrImplementedWithArgs(delegate, finishedSEL, @encode(GTMHTTPFetcher *), @encode(NSData *), @encode(NSError *), 0);
   GTMAssertSelectorNilOrImplementedWithArgs(delegate, receivedDataSEL_, @encode(GTMHTTPFetcher *), @encode(NSData *), 0);
   GTMAssertSelectorNilOrImplementedWithArgs(delegate, retrySEL_, @encode(GTMHTTPFetcher *), @encode(BOOL), @encode(NSError *), 0);
+
+  NSError *error = nil;
 
   if (connection_ != nil) {
     NSAssert1(connection_ != nil, @"fetch object %@ being reused; this should never happen", self);
@@ -181,6 +181,8 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
   [downloadedData_ release];
   downloadedData_ = nil;
+
+  downloadedLength_ = 0;
 
   finishedSEL_ = finishedSEL;
 
@@ -234,6 +236,24 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
         [request_ addValue:cookieHeader forHTTPHeaderField:@"Cookie"]; // header name
       }
     }
+  }
+
+  if (downloadPath_ != nil) {
+    // downloading to a path, so create a temporary file and a file handle for
+    // downloading
+    NSString *tempPath = [self createTempDownloadFilePathForPath:downloadPath_];
+
+    BOOL didCreate = [[NSData data] writeToFile:tempPath
+                                        options:0
+                                          error:&error];
+    if (!didCreate) goto CannotBeginFetch;
+
+    [self setTemporaryDownloadPath:tempPath];
+
+    NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:tempPath];
+    if (fh == nil) goto CannotBeginFetch;
+
+    [self setDownloadFileHandle:fh];
   }
 
   // finally, start the connection
@@ -292,9 +312,11 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
 CannotBeginFetch:
   {
-    NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherErrorDomain
-                                         code:kGTMHTTPFetcherErrorDownloadFailed
-                                     userInfo:nil];
+    if (error == nil) {
+      error = [NSError errorWithDomain:kGTMHTTPFetcherErrorDomain
+                                  code:kGTMHTTPFetcherErrorDownloadFailed
+                              userInfo:nil];
+    }
     if (finishedSEL) {
       [[self retain] autorelease]; // in case the callback releases us
 
@@ -310,6 +332,12 @@ CannotBeginFetch:
     }
 #endif
     [self releaseCallbacks];
+
+    if (temporaryDownloadPath_) {
+      [[self fileManager] removeItemAtPath:temporaryDownloadPath_
+                                     error:NULL];
+      [self setTemporaryDownloadPath:nil];
+    }
   }
   return NO;
 }
@@ -327,6 +355,40 @@ CannotBeginFetch:
 }
 #endif
 
+- (NSString *)createTempDownloadFilePathForPath:targetPath {
+  NSString *tempDir = nil;
+
+#if (!TARGET_OS_IPHONE && (MAC_OS_X_VERSION_MAX_ALLOWED >= 1060)) || (TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 40000))
+  // find an appropriate directory for the download, ideally on the same disk
+  // as the final target location so the temporary file won't have to be moved
+  // to a different disk
+  //
+  // available in SDKs for 10.6 and iOS 4
+  SEL sel = @selector(URLForDirectory:inDomain:appropriateForURL:create:error:);
+  if ([NSFileManager instancesRespondToSelector:sel]) {
+    NSError *error = nil;
+    NSURL *targetURL = [NSURL fileURLWithPath:targetPath];
+    NSFileManager *fileMgr = [self fileManager];
+
+    NSURL *tempDirURL = [fileMgr URLForDirectory:NSItemReplacementDirectory
+                                        inDomain:NSUserDomainMask
+                               appropriateForURL:targetURL
+                                          create:YES
+                                           error:&error];
+    tempDir = [tempDirURL path];
+  }
+#endif
+
+  if (tempDir == nil) {
+    tempDir = NSTemporaryDirectory();
+  }
+
+  static unsigned int counter = 0;
+  NSString *name = [NSString stringWithFormat:@"gtmhttpfetcher_%u_%u",
+                        ++counter, (unsigned int) arc4random()];
+  NSString *result = [tempDir stringByAppendingPathComponent:name];
+  return result;
+}
 
 // Returns YES if this is in the process of fetching a URL, or waiting to
 // retry
@@ -405,6 +467,12 @@ CannotBeginFetch:
   if (shouldReleaseCallbacks) {
     [self releaseCallbacks];
   }
+
+  if (temporaryDownloadPath_) {
+    [[NSFileManager defaultManager] removeItemAtPath:temporaryDownloadPath_
+                                               error:NULL];
+    [self setTemporaryDownloadPath:nil];
+  }
 }
 
 // external stop method
@@ -428,6 +496,30 @@ CannotBeginFetch:
 
   [self beginFetchWithDelegate:delegate_
              didFinishSelector:finishedSEL_];
+}
+
+- (void)waitForCompletionWithTimeout:(NSTimeInterval)timeoutInSeconds {
+  NSDate* giveUpDate = [NSDate dateWithTimeIntervalSinceNow:timeoutInSeconds];
+
+  // loop until the callbacks have been called and released, and until
+  // the connection is no longer pending, or until the timeout has expired
+  while ((!hasConnectionEnded_
+#if NS_BLOCKS_AVAILABLE
+          || completionBlock_ != nil
+#endif
+          || delegate_ != nil)
+         && [giveUpDate timeIntervalSinceNow] > 0) {
+
+    // run the current run loop 1/1000 of a second to give the networking
+    // code a chance to work
+    NSDate *stopDate = [NSDate dateWithTimeIntervalSinceNow:0.001];
+    [[NSRunLoop currentRunLoop] runUntilDate:stopDate];
+  }
+}
+
+- (NSFileManager *)fileManager {
+  // use a temporary instance of NSFileManager for thread-safety
+  return [[[NSFileManager alloc] init] autorelease];
 }
 
 #pragma mark NSURLConnection Delegate Methods
@@ -506,6 +598,7 @@ CannotBeginFetch:
   // redirect, so each time we reset the data.
   [downloadedData_ setLength:0];
   [downloadFileHandle_ truncateFileAtOffset:0];
+  downloadedLength_ = 0;
 
   [self setResponse:response];
 
@@ -676,6 +769,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
     // append to file
     @try {
       [downloadFileHandle_ writeData:data];
+
+      downloadedLength_ = [downloadFileHandle_ offsetInFile];
     }
     @catch (NSException *exc) {
       // couldn't write to file, probably due to a full disk
@@ -690,6 +785,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
   } else {
     // append to mutable data
     [downloadedData_ appendData:data];
+
+    downloadedLength_ = [downloadedData_ length];
   }
 
   if (receivedDataSEL_) {
@@ -731,6 +828,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
           // and the URL response was indeed present in the cache.
           [downloadFileHandle_ truncateFileAtOffset:0];
           [downloadFileHandle_ writeData:cachedData];
+          downloadedLength_ = [downloadFileHandle_ offsetInFile];
         }
         @catch (NSException *) {
           // Failed to write data, likely due to lack of disk space
@@ -738,6 +836,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
         }
       } else {
         [downloadedData_ setData:cachedData];
+        downloadedLength_ = [cachedData length];
       }
     }
   }
@@ -777,6 +876,21 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
   if (status >= 0 && status < 300) {
     // success
+    if (downloadPath_) {
+      // avoid deleting the downloaded file when the fetch stops
+      [downloadFileHandle_ closeFile];
+      [self setDownloadFileHandle:nil];
+
+      NSFileManager *fileMgr = [self fileManager];
+      [fileMgr removeItemAtPath:downloadPath_
+                          error:NULL];
+
+      if ([fileMgr moveItemAtPath:temporaryDownloadPath_
+                           toPath:downloadPath_
+                            error:&error]) {
+        [self setTemporaryDownloadPath:nil];
+      }
+    }
   } else {
     // status over 300; retry or notify the delegate of failure
     if ([self shouldRetryNowForStatus:status error:nil]) {
@@ -1088,7 +1202,10 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 @synthesize retrySelector = retrySEL_;
 @synthesize retryFactor = retryFactor_;
 @synthesize response = response_;
+@synthesize downloadedLength = downloadedLength_;
 @synthesize downloadedData = downloadedData_;
+@synthesize downloadPath = downloadPath_;
+@synthesize temporaryDownloadPath = temporaryDownloadPath_;
 @synthesize downloadFileHandle = downloadFileHandle_;
 @synthesize runLoopModes = runLoopModes_;
 
