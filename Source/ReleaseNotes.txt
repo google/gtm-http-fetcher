@@ -3,6 +3,11 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
+16-Nov-2010
+
+Added fetcher comment property for logging
+
+
 27-Oct-2010
 
 Added downloadPath and downloadFileHandle properties

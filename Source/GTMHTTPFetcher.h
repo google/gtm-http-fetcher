@@ -340,6 +340,8 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
   NSTimeInterval minRetryInterval_; // random between 1 and 2 seconds
   NSTimeInterval retryFactor_;      // default interval multiplier is 2
   NSTimeInterval lastRetryInterval_;
+
+  NSString *comment_;               // comment for log
 }
 
 // create a fetcher
@@ -516,6 +518,11 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 - (id)propertyForKey:(NSString *)key;
 
 - (void)addPropertiesFromDictionary:(NSDictionary *)dict;
+
+// comments are useful for logging
+@property (copy) NSString *comment;
+
+- (void)setCommentWithFormat:(id)format, ...;
 
 // using the fetcher while a modal dialog is displayed requires setting the
 // run-loop modes to include NSModalPanelRunLoopMode

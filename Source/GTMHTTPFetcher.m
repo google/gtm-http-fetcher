@@ -153,6 +153,8 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
   [retryTimer_ invalidate];
   [retryTimer_ release];
 
+  [comment_ release];
+
   [super dealloc];
 }
 
@@ -1208,6 +1210,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 @synthesize temporaryDownloadPath = temporaryDownloadPath_;
 @synthesize downloadFileHandle = downloadFileHandle_;
 @synthesize runLoopModes = runLoopModes_;
+@synthesize comment = comment_;
 
 - (NSInteger)cookieStorageMethod {
   return cookieStorageMethod_;
@@ -1334,6 +1337,20 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
   } else {
     [properties_ addEntriesFromDictionary:dict];
   }
+}
+
+- (void)setCommentWithFormat:(id)format, ... {
+#if !STRIP_GTM_FETCH_LOGGING
+  NSString *result = format;
+  if (format) {
+    va_list argList;
+    va_start(argList, format);
+    result = [[[NSString alloc] initWithFormat:format
+                                     arguments:argList] autorelease];
+    va_end(argList);
+  }
+  [self setComment:result];
+#endif
 }
 
 + (Class)connectionClass {

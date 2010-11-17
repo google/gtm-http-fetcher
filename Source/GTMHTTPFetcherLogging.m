@@ -46,7 +46,8 @@
 @end
 
 @interface GTMHTTPFetcher (GTMHTTPFetcherLoggingInternal)
-+ (NSString *)headersStringForDictionary:(NSDictionary *)dict;
++ (NSString *)headersStringForDictionary:(NSDictionary *)dict
+                             alignColons:(BOOL)shouldAlignColons;
 
 - (void)inputStream:(GTMProgressMonitorInputStream *)stream
      readIntoBuffer:(void *)buffer
@@ -597,10 +598,19 @@ static NSString* gLoggingProcessName = nil;
   NSString *copyableFileName = [NSString stringWithFormat:@"copyable_%d.txt",
                                 responseCounter];
 
-  // write the date & time, and the link to the plain-text (copyable) log
-  NSString *dateLineFormat = @"<b>%@</b> &nbsp;&nbsp;&nbsp;&nbsp; "
-    "<a href='%@'><i>request/response</i></a><br>";
-  [outputHTML appendFormat:dateLineFormat, [NSDate date], copyableFileName];
+  // write the date & time, the comment, and the link to the plain-text
+  // (copyable) log
+  NSString *dateLineFormat = @"<b>%@ &nbsp;&nbsp;&nbsp;&nbsp; ";
+  [outputHTML appendFormat:dateLineFormat, [NSDate date]];
+
+  NSString *comment = [self comment];
+  if (comment) {
+    NSString *commentFormat = @"%@ &nbsp;&nbsp;&nbsp;&nbsp; ";
+    [outputHTML appendFormat:commentFormat, comment];
+  }
+
+  NSString *reqRespFormat = @"</b><a href='%@'><i>request/response</i></a><br>";
+  [outputHTML appendFormat:reqRespFormat, copyableFileName];
 
   // write the request URL
   NSString *requestMethod = [request HTTPMethod];
@@ -617,7 +627,8 @@ static NSString* gLoggingProcessName = nil;
       requestHeadersName, // layer name
       (int)[requestHeaders count],
       requestHeadersName,
-     [[self class] headersStringForDictionary:requestHeaders]];
+     [[self class] headersStringForDictionary:requestHeaders
+                                  alignColons:YES]];
   } else {
     [outputHTML appendString:@"<i>Request headers: none</i><br>"];
   }
@@ -664,11 +675,12 @@ static NSString* gLoggingProcessName = nil;
   if (response) {
     NSString *statusString = @"";
     if (status != 0) {
-      statusString = @"200";
-      if (status != 200) {
-        // purple for anything other than 200
-        statusString = [NSString stringWithFormat:@"<FONT COLOR=\"#FF00FF\">%ld</FONT>",
-          (long)status];
+      if (status == 200 || status == 201) {
+        statusString = [NSString stringWithFormat:@"%ld", (long)status];
+      } else {
+        // purple for anything other than 200 or 201
+        NSString *statusFormat = @"<FONT COLOR=\"#FF00FF\">%ld</FONT>";
+        statusString = [NSString stringWithFormat:statusFormat, (long)status];
       }
     }
 
@@ -688,7 +700,8 @@ static NSString* gLoggingProcessName = nil;
       statusString,
       [response MIMEType],
       responseURLStr,
-     [[self class] headersStringForDictionary:responseHeaders]];
+     [[self class] headersStringForDictionary:responseHeaders
+                                  alignColons:YES]];
 
     // write the response headers, toggleable
     if ([responseHeaders count]) {
@@ -703,7 +716,8 @@ static NSString* gLoggingProcessName = nil;
         (int)[responseHeaders count],
         (cookiesSet ? @"<i>sets cookies</i>" : @""),
         responseHeadersName,
-       [[self class] headersStringForDictionary:responseHeaders]];
+       [[self class] headersStringForDictionary:responseHeaders
+                                    alignColons:YES]];
 
     } else {
       [outputHTML appendString:@"<i>Response headers: none</i><br>\n"];
@@ -776,11 +790,15 @@ static NSString* gLoggingProcessName = nil;
 
   // make a single string of the request and response, suitable for copying
   // to the clipboard and pasting into a bug report
-  NSMutableString *copyable = [NSMutableString stringWithFormat:@"%@\n",
-                               [NSDate date]];
+  NSMutableString *copyable = [NSMutableString string];
+  if (comment) {
+    [copyable appendFormat:@"%@\n\n", comment];
+  }
+  [copyable appendFormat:@"%@\n", [NSDate date]];
   [copyable appendFormat:@"Request: %@ %@\n", requestMethod, requestURL];
   [copyable appendFormat:@"Request headers:\n%@\n",
-   [[self class] headersStringForDictionary:requestHeaders]];
+   [[self class] headersStringForDictionary:requestHeaders
+                                alignColons:NO]];
 
   if (postDataLength > 0) {
     [copyable appendFormat:@"Request body: (%u bytes)\n",
@@ -793,7 +811,8 @@ static NSString* gLoggingProcessName = nil;
   if (response) {
     [copyable appendFormat:@"Response: status %d\n", (int) status];
     [copyable appendFormat:@"Response headers:\n%@\n",
-     [[self class] headersStringForDictionary:responseHeaders]];
+     [[self class] headersStringForDictionary:responseHeaders
+                                  alignColons:NO]];
     [copyable appendFormat:@"Response body: (%u bytes)\n",
      (unsigned int) responseDataLength];
     if (responseDataLength > 0) {
@@ -957,7 +976,8 @@ static NSString* gLoggingProcessName = nil;
   return result;
 }
 
-+ (NSString *)headersStringForDictionary:(NSDictionary *)dict {
++ (NSString *)headersStringForDictionary:(NSDictionary *)dict
+                             alignColons:(BOOL)shouldAlignColons {
   // format the dictionary in http header style, like
   //   Accept:        application/json
   //   Cache-Control: no-cache
@@ -977,7 +997,11 @@ static NSString* gLoggingProcessName = nil;
                               betweenStartString:@"oauth_token=\""
                                        endString:@"\""];
     }
-    [str appendFormat:@"%*s: %@\n", maxKeyLen, [key UTF8String], value];
+    if (shouldAlignColons) {
+      [str appendFormat:@"%*s: %@\n", maxKeyLen, [key UTF8String], value];
+    } else {
+      [str appendFormat:@"  %@: %@\n", key, value];
+    }
   }
   return str;
 }
