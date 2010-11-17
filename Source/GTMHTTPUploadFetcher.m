@@ -412,6 +412,12 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   chunkFetcher = [GTMHTTPFetcher fetcherWithRequest:chunkRequest];
   [chunkFetcher setRunLoopModes:[self runLoopModes]];
 
+  // if the upload fetcher has a comment, use the same comment for chunks
+  NSString *baseComment = [self comment];
+  if (baseComment) {
+    [chunkFetcher setCommentWithFormat:@"%@ (%@)", baseComment, rangeStr];
+  }
+
   // give the chunk fetcher the same properties as the previous chunk fetcher
   [chunkFetcher setProperties:props];
 
