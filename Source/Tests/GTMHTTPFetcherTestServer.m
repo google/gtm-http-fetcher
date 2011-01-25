@@ -80,13 +80,6 @@
 
   NSString *etag = @"GoodETag";
 
-  NSString *postString = @"";
-  NSData *postData = [request body];
-  if ([postData length] > 0) {
-    postString = [[[NSString alloc] initWithData:postData
-                                        encoding:NSUTF8StringEncoding] autorelease];
-  }
-
   NSDictionary *requestHeaders = [request allHeaderFieldValues];
   NSString *ifMatch = [requestHeaders objectForKey:@"If-Match"];
   NSString *ifNoneMatch = [requestHeaders objectForKey:@"If-None-Match"];
