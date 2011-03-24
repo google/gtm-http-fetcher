@@ -43,7 +43,7 @@
   #define _EXTERN
   #define _INITIALIZE_AS(x) =x
 #else
-  #define _EXTERN
+  #define _EXTERN extern
   #define _INITIALIZE_AS(x)
 #endif
 

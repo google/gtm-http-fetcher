@@ -3,6 +3,17 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
+24-Mar-2011
+
+Add authorizer support
+
+
+7-Feb-2011
+
+Made cookies set by a redirect immediately available in the new request (thanks ehoracek)
+Added getter for static cookie storage
+
+
 16-Nov-2010
 
 Added fetcher comment property for logging

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 Google Inc.
+/* Copyright (c) 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -232,11 +232,15 @@
 #undef _EXTERN
 #undef _INITIALIZE_AS
 #ifdef GTMHTTPFETCHER_DEFINE_GLOBALS
-#define _EXTERN
-#define _INITIALIZE_AS(x) =x
+  #define _EXTERN
+  #define _INITIALIZE_AS(x) =x
 #else
-#define _EXTERN extern
-#define _INITIALIZE_AS(x)
+  #if defined(__cplusplus)
+    #define _EXTERN extern "C"
+  #else
+    #define _EXTERN extern
+  #endif
+  #define _INITIALIZE_AS(x)
 #endif
 
 // notifications
@@ -258,6 +262,7 @@ enum {
   kGTMHTTPFetcherErrorAuthenticationChallengeFailed = -2,
   kGTMHTTPFetcherErrorChunkUploadFailed = -3,
   kGTMHTTPFetcherErrorFileHandleException = -4,
+  kGTMHTTPFetcherErrorAuthorizationFailed = -5,
 
   kGTMHTTPFetcherStatusNotModified = 304,
   kGTMHTTPFetcherStatusPreconditionFailed = 412
@@ -287,6 +292,18 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
                              response:(NSURLResponse *)response
                        downloadedData:(NSData *)downloadedData;
 - (void)removeCachedDataForRequest:(NSURLRequest *)request;
+@end
+
+@protocol GTMFetcherAuthorizationProtocol <NSObject>
+@required
+// allow us to call the authorizer withour requiring its sources in this project
+- (BOOL)authorizeRequest:(NSMutableURLRequest *)request
+                delegate:(id)delegate
+       didFinishSelector:(SEL)sel;
+
+- (void)stopAuthorization;
+
+- (BOOL)isAuthorizedRequest:(NSURLRequest *)request;
 @end
 
 // async retrieval of an http get or post
@@ -331,6 +348,8 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
   id <GTMHTTPFetchHistoryProtocol> fetchHistory_; // if supplied by the caller, used for Last-Modified-Since checks and cookies
   NSInteger cookieStorageMethod_;   // constant from above
   id <GTMCookieStorageProtocol> cookieStorage_;
+  
+  id <GTMFetcherAuthorizationProtocol> authorizer_;
 
   BOOL isRetryEnabled_;             // user wants auto-retry
   SEL retrySEL_;                    // optional; set with setRetrySelector
@@ -351,6 +370,10 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 // fetcher for the life of the connection as well. So the caller doesn't have
 // to retain the fetcher explicitly unless they want to be able to cancel it.
 + (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
+
+// convenience methods that make a request, like +fetcherWithRequest
++ (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL;
++ (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString;
 
 // designated initializer
 - (id)initWithRequest:(NSURLRequest *)request;
@@ -376,6 +399,11 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 // without a fetch history set, and kGTMHTTPFetcherCookieStorageMethodFetchHistory
 // with a fetch history set
 @property (assign) NSInteger cookieStorageMethod;
+
++ (id <GTMCookieStorageProtocol>)staticCookieStorage;
+
+// object to add authorization to the request, if needed
+@property (retain) id <GTMFetcherAuthorizationProtocol> authorizer;
 
 // the delegate is retained during the connection
 @property (retain) id delegate;

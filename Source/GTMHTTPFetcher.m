@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 Google Inc.
+/* Copyright (c) 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,20 +32,31 @@ const NSTimeInterval kUnsetMaxRetryInterval = -1;
 const NSTimeInterval kDefaultMaxDownloadRetryInterval = 60.0;
 const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
+// authorization
+static NSString *const kAuthDelegateKey = @"_authDelegate";
+static NSString *const kAuthSelectorKey = @"_authSel";
+
 //
 // GTMHTTPFetcher
 //
 
 @interface GTMHTTPFetcher ()
 @property (copy) NSString *temporaryDownloadPath;
+@property (retain) id <GTMCookieStorageProtocol> cookieStorage;
+
+- (BOOL)authorizeRequestWithDelegate:(id)delegate
+                   didFinishSelector:(SEL)finishedSel;
+- (void)authorizer:(id)auth
+           request:(NSMutableURLRequest *)request
+ finishedWithError:(NSError *)error;
 
 - (NSString *)createTempDownloadFilePathForPath:(NSString *)targetPath;
 - (NSFileManager *)fileManager;
 - (void)stopFetchReleasingCallbacks:(BOOL)shouldReleaseCallbacks;
 - (BOOL)shouldReleaseCallbacksUponCompletion;
 
+- (void)addCookiesToRequest:(NSMutableURLRequest *)request;
 - (void)handleCookiesForResponse:(NSURLResponse *)response;
-- (void)setCookieStorage:(id <GTMCookieStorageProtocol> )obj;
 
 - (void)logNowWithError:(NSError *)error;
 
@@ -73,6 +84,14 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
 + (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request {
   return [[[[self class] alloc] initWithRequest:request] autorelease];
+}
+
++ (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL {
+  return [self fetcherWithRequest:[NSURLRequest requestWithURL:requestURL]];
+}
+
++ (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString {
+  return [self fetcherWithURL:[NSURL URLWithString:requestURLString]];
 }
 
 + (void)initialize {
@@ -125,7 +144,6 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
   // note: if a connection or a retry timer was pending, then this instance
   // would be retained by those so it wouldn't be getting dealloc'd,
   // hence we don't need to stopFetch here
-
   [request_ release];
   [connection_ release];
   [downloadedData_ release];
@@ -136,6 +154,7 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
   [proxyCredential_ release];
   [postData_ release];
   [postStream_ release];
+  [authorizer_ release];
   [loggedStreamData_ release];
   [response_ release];
 #if NS_BLOCKS_AVAILABLE
@@ -181,6 +200,15 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
     goto CannotBeginFetch;
   }
 
+  if (authorizer_) {
+    BOOL isAuthorized = [authorizer_ isAuthorizedRequest:request_];
+    if (!isAuthorized) {
+      // authorization needed
+      return [self authorizeRequestWithDelegate:delegate
+                              didFinishSelector:finishedSEL];
+    }
+  }
+
   [downloadedData_ release];
   downloadedData_ = nil;
 
@@ -224,21 +252,7 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
     }
   }
 
-  // get cookies for this URL from our storage array, if
-  // we have a storage array
-  if (cookieStorageMethod_ != kGTMHTTPFetcherCookieStorageMethodSystemDefault
-      && cookieStorageMethod_ != kGTMHTTPFetcherCookieStorageMethodNone) {
-
-    NSArray *cookies = [cookieStorage_ cookiesForURL:[request_ URL]];
-    if ([cookies count]) {
-
-      NSDictionary *headerFields = [NSHTTPCookie requestHeaderFieldsWithCookies:cookies];
-      NSString *cookieHeader = [headerFields objectForKey:@"Cookie"]; // key used in header dictionary
-      if (cookieHeader) {
-        [request_ addValue:cookieHeader forHTTPHeaderField:@"Cookie"]; // header name
-      }
-    }
-  }
+  [self addCookiesToRequest:request_];
 
   if (downloadPath_ != nil) {
     // downloading to a path, so create a temporary file and a file handle for
@@ -335,15 +349,75 @@ CannotBeginFetch:
 #endif
     [self releaseCallbacks];
 
+    self.authorizer = nil;
+
     if (temporaryDownloadPath_) {
       [[self fileManager] removeItemAtPath:temporaryDownloadPath_
                                      error:NULL];
-      [self setTemporaryDownloadPath:nil];
+      self.temporaryDownloadPath = nil;
     }
   }
   return NO;
 }
 
+- (BOOL)authorizeRequestWithDelegate:(id)delegate
+                   didFinishSelector:(SEL)finishedSel {
+  id authorizer = self.authorizer;
+  SEL asyncAuthSel = @selector(authorizeRequest:delegate:didFinishSelector:);
+  if ([authorizer respondsToSelector:asyncAuthSel]) {
+    // async authorization; hold on to the client's delegate and selector in
+    // properties of the fetcher object
+    NSString *selStr = (finishedSel ? NSStringFromSelector(finishedSel) : @"");
+    [self setProperty:delegate forKey:kAuthDelegateKey];
+    [self setProperty:selStr forKey:kAuthSelectorKey];
+
+    SEL callbackSel = @selector(authorizer:request:finishedWithError:);
+    BOOL isAuthing = [authorizer authorizeRequest:request_
+                                         delegate:self
+                                didFinishSelector:callbackSel];
+    return isAuthing;
+  } else {
+    NSAssert(authorizer == nil, @"invalid authorizer for fetch");
+
+    // no authorizing possible; just begin fetching
+    return [self beginFetchWithDelegate:delegate
+                      didFinishSelector:finishedSel];
+  }
+}
+
+- (void)authorizer:(id <GTMFetcherAuthorizationProtocol>)auth
+           request:(NSMutableURLRequest *)request
+ finishedWithError:(NSError *)error {
+  id delegate = [self propertyForKey:kAuthDelegateKey];
+  NSString *selStr = [self propertyForKey:kAuthSelectorKey];
+  SEL finishedSel = NSSelectorFromString(selStr);
+
+  BOOL isAuthorized = [auth isAuthorizedRequest:request_];
+  if (!isAuthorized) {
+    // wrap the actual authorization error into a more specific error object
+    NSDictionary *userInfo = nil;
+    if (error) {
+      userInfo = [NSDictionary dictionaryWithObject:error forKey:@"error"];
+    }
+    error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
+                                code:kGTMHTTPFetcherErrorAuthorizationFailed
+                            userInfo:userInfo];
+  }
+
+  if (error != nil) {
+    // we can't fetch without authorization
+    [self invokeFetchCallback:finishedSel
+                       target:delegate
+                         data:nil
+                        error:error];
+  } else {
+    [self beginFetchWithDelegate:delegate
+               didFinishSelector:finishedSel];
+  }
+
+  [self setProperty:nil forKey:kAuthDelegateKey];
+  [self setProperty:nil forKey:kAuthSelectorKey];
+}
 
 #if NS_BLOCKS_AVAILABLE
 - (BOOL)beginFetchWithCompletionHandler:(void (^)(NSData *data, NSError *error))handler {
@@ -390,6 +464,24 @@ CannotBeginFetch:
                         ++counter, (unsigned int) arc4random()];
   NSString *result = [tempDir stringByAppendingPathComponent:name];
   return result;
+}
+
+- (void)addCookiesToRequest:(NSMutableURLRequest *)request {
+  // get cookies for this URL from our storage array, if
+  // we have a storage array
+  if (cookieStorageMethod_ != kGTMHTTPFetcherCookieStorageMethodSystemDefault
+      && cookieStorageMethod_ != kGTMHTTPFetcherCookieStorageMethodNone) {
+
+    NSArray *cookies = [cookieStorage_ cookiesForURL:[request URL]];
+    if ([cookies count] > 0) {
+
+      NSDictionary *headerFields = [NSHTTPCookie requestHeaderFieldsWithCookies:cookies];
+      NSString *cookieHeader = [headerFields objectForKey:@"Cookie"]; // key used in header dictionary
+      if (cookieHeader) {
+        [request addValue:cookieHeader forHTTPHeaderField:@"Cookie"]; // header name
+      }
+    }
+  }
 }
 
 // Returns YES if this is in the process of fetching a URL, or waiting to
@@ -466,14 +558,18 @@ CannotBeginFetch:
     [self sendStopNotificationIfNeeded];
   }
 
+  [authorizer_ stopAuthorization];
+
   if (shouldReleaseCallbacks) {
     [self releaseCallbacks];
+
+    self.authorizer = nil;
   }
 
   if (temporaryDownloadPath_) {
     [[NSFileManager defaultManager] removeItemAtPath:temporaryDownloadPath_
                                                error:NULL];
-    [self setTemporaryDownloadPath:nil];
+    self.temporaryDownloadPath = nil;
   }
 }
 
@@ -547,6 +643,9 @@ CannotBeginFetch:
             redirectResponse:(NSURLResponse *)redirectResponse {
 
   if (redirectRequest && redirectResponse) {
+    // save cookies from the response
+    [self handleCookiesForResponse:redirectResponse];
+
     NSMutableURLRequest *newRequest = [[request_ mutableCopy] autorelease];
     // copy the URL
     NSURL *redirectURL = [redirectRequest URL];
@@ -577,10 +676,10 @@ CannotBeginFetch:
       NSString *value = [redirectHeaders objectForKey:key];
       [newRequest setValue:value forHTTPHeaderField:key];
     }
-    redirectRequest = newRequest;
 
-    // save cookies from the response
-    [self handleCookiesForResponse:redirectResponse];
+    [self addCookiesToRequest:newRequest];
+
+    redirectRequest = newRequest;
 
     // log the response we just received
     [self setResponse:redirectResponse];
@@ -881,7 +980,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
     if (downloadPath_) {
       // avoid deleting the downloaded file when the fetch stops
       [downloadFileHandle_ closeFile];
-      [self setDownloadFileHandle:nil];
+      self.downloadFileHandle = nil;
 
       NSFileManager *fileMgr = [self fileManager];
       [fileMgr removeItemAtPath:downloadPath_
@@ -890,7 +989,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       if ([fileMgr moveItemAtPath:temporaryDownloadPath_
                            toPath:downloadPath_
                             error:&error]) {
-        [self setTemporaryDownloadPath:nil];
+        self.temporaryDownloadPath = nil;
       }
     }
   } else {
@@ -1199,6 +1298,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 @synthesize postData = postData_;
 @synthesize postStream = postStream_;
 @synthesize delegate = delegate_;
+@synthesize authorizer = authorizer_;
 @synthesize sentDataSelector = sentDataSEL_;
 @synthesize receivedDataSelector = receivedDataSEL_;
 @synthesize retrySelector = retrySEL_;
@@ -1211,6 +1311,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 @synthesize downloadFileHandle = downloadFileHandle_;
 @synthesize runLoopModes = runLoopModes_;
 @synthesize comment = comment_;
+@synthesize cookieStorage = cookieStorage_;
 
 - (NSInteger)cookieStorageMethod {
   return cookieStorageMethod_;
@@ -1225,7 +1326,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
     [request_ setHTTPShouldHandleCookies:YES];
 
     // no need for a cookie storage object
-    [self setCookieStorage:nil];
+    self.cookieStorage = nil;
 
   } else {
     // not system default
@@ -1233,15 +1334,19 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
     if (method == kGTMHTTPFetcherCookieStorageMethodStatic) {
       // store cookies in the static array
-      [self setCookieStorage:gGTMFetcherStaticCookieStorage];
+      self.cookieStorage = gGTMFetcherStaticCookieStorage;
     } else if (method == kGTMHTTPFetcherCookieStorageMethodFetchHistory) {
       // store cookies in the fetch history
-      [self setCookieStorage:[fetchHistory_ cookieStorage]];
+      self.cookieStorage = [fetchHistory_ cookieStorage];
     } else {
       // kGTMHTTPFetcherCookieStorageMethodNone - ignore cookies
-      [self setCookieStorage:nil];
+      self.cookieStorage = nil;
     }
   }
+}
+
++ (id <GTMCookieStorageProtocol>)staticCookieStorage {
+  return gGTMFetcherStaticCookieStorage;
 }
 
 + (BOOL)doesSupportSentDataCallback {
@@ -1289,15 +1394,6 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       [self setCookieStorageMethod:kGTMHTTPFetcherCookieStorageMethodStatic];
     }
   }
-}
-
-- (void)setCookieStorage:(id <GTMCookieStorageProtocol>)obj {
-  [cookieStorage_ autorelease];
-  cookieStorage_ = [obj retain];
-}
-
-- (id <GTMCookieStorageProtocol>)cookieStorage {
-  return cookieStorage_;
 }
 
 - (id)userData {

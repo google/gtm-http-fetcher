@@ -62,7 +62,7 @@
 
 + (NSString *)snipSubtringOfString:(NSString *)originalStr
                 betweenStartString:(NSString *)startStr
-                         endString:(NSString *)endStr;  
+                         endString:(NSString *)endStr;
 @end
 
 @implementation GTMHTTPFetcher (GTMHTTPFetcherLogging)
@@ -195,8 +195,18 @@ static NSString* gLoggingProcessName = nil;
                                                  encoding:NSUTF8StringEncoding] autorelease];
       if (jsonStr) {
         // convert from JSON string to NSObjects and back to a formatted string
-        id obj = [parser objectWithString:jsonStr error:NULL];
+        NSMutableDictionary *obj = [parser objectWithString:jsonStr error:NULL];
         if (obj) {
+          // for security and privacy, omit OAuth 2 response refresh tokens
+          //
+          // we'll assume that any JSON with "refresh_token" and "access_token"
+          // keys in the response is an OAuth 2 token endpoint response
+          if ([obj isKindOfClass:[NSMutableDictionary class]]
+              && [obj valueForKey:@"refresh_token"] != nil
+              && [obj valueForKey:@"access_token"] != nil) {
+            [obj setObject:@"_snip_" forKey:@"refresh_token"];
+          }
+
           NSString *formatted = [parser stringWithObject:obj error:NULL];
           if (formatted) return formatted;
         }
@@ -257,44 +267,6 @@ static NSString* gLoggingProcessName = nil;
   NSString *dataStr = [[[NSString alloc] initWithData:inputData
                                              encoding:NSUTF8StringEncoding] autorelease];
   return dataStr;
-}
-
-
-- (NSString *)cleanParameterFollowing:(NSString *)paramName
-                           fromString:(NSString *)originalStr {
-  // We don't want the password written to disk
-  //
-  // find "&Passwd=" in the string, and replace it and the stuff that
-  // follows it with "Passwd=_snip_"
-
-  NSRange passwdRange = [originalStr rangeOfString:@"&Passwd="];
-  if (passwdRange.location != NSNotFound) {
-
-    // we found Passwd=; find the & that follows the parameter
-    NSUInteger origLength = [originalStr length];
-    NSRange restOfString = NSMakeRange(passwdRange.location+1,
-                                       origLength - passwdRange.location - 1);
-    NSRange rangeOfFollowingAmp = [originalStr rangeOfString:@"&"
-                                                     options:0
-                                                       range:restOfString];
-    NSRange replaceRange;
-    if (rangeOfFollowingAmp.location == NSNotFound) {
-      // found no other & so replace to end of string
-      replaceRange = NSMakeRange(passwdRange.location,
-                           rangeOfFollowingAmp.location - passwdRange.location);
-    } else {
-      // another parameter after &Passwd=foo
-      replaceRange = NSMakeRange(passwdRange.location,
-                           rangeOfFollowingAmp.location - passwdRange.location);
-    }
-
-    NSMutableString *result = [NSMutableString stringWithString:originalStr];
-    NSString *replacement = [NSString stringWithFormat:@"%@_snip_", paramName];
-
-    [result replaceCharactersInRange:replaceRange withString:replacement];
-    return result;
-  }
-  return originalStr;
 }
 
 - (void)setupStreamLogging {
@@ -654,6 +626,20 @@ static NSString* gLoggingProcessName = nil;
         postDataTextAreaFmt =  @"<textarea rows=\"15\" cols=\"100\""
          " readonly=true wrap=soft>\n%@\n</textarea>";
       }
+
+      // remove OAuth 2 client secret and refresh token
+      //
+      // we won't worry about the access token, since it expires in an hour
+      // or so anyway
+      postDataStr = [[self class] snipSubtringOfString:postDataStr
+                                    betweenStartString:@"client_secret="
+                                             endString:@"&"];
+
+      postDataStr = [[self class] snipSubtringOfString:postDataStr
+                                    betweenStartString:@"refresh_token="
+                                             endString:@"&"];
+
+      // remove ClientLogin password
       postDataStr = [[self class] snipSubtringOfString:postDataStr
                                     betweenStartString:@"&Passwd="
                                              endString:@"&"];
@@ -993,6 +979,7 @@ static NSString* gLoggingProcessName = nil;
   for (NSString *key in keys) {
     NSString *value = [dict valueForKey:key];
     if ([key isEqual:@"Authorization"]) {
+      // remove OAuth 1 token
       value = [[self class] snipSubtringOfString:value
                               betweenStartString:@"oauth_token=\""
                                        endString:@"\""];

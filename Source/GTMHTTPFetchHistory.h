@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 Google Inc.
+/* Copyright (c) 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,11 +45,15 @@
 #undef _EXTERN
 #undef _INITIALIZE_AS
 #ifdef GTMHTTPFETCHHISTORY_DEFINE_GLOBALS
-#define _EXTERN
-#define _INITIALIZE_AS(x) =x
+  #define _EXTERN
+  #define _INITIALIZE_AS(x) =x
 #else
-#define _EXTERN extern
-#define _INITIALIZE_AS(x)
+  #if defined(__cplusplus)
+    #define _EXTERN extern "C"
+  #else
+    #define _EXTERN extern
+  #endif
+  #define _INITIALIZE_AS(x)
 #endif
 
 
