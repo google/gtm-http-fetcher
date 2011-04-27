@@ -296,7 +296,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 
 @protocol GTMFetcherAuthorizationProtocol <NSObject>
 @required
-// allow us to call the authorizer withour requiring its sources in this project
+// allow us to call the authorizer without requiring its sources in this project
 - (BOOL)authorizeRequest:(NSMutableURLRequest *)request
                 delegate:(id)delegate
        didFinishSelector:(SEL)sel;
