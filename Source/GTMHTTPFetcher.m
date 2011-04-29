@@ -367,7 +367,7 @@ CannotBeginFetch:
   if ([authorizer respondsToSelector:asyncAuthSel]) {
     // async authorization; hold on to the client's delegate and selector in
     // properties of the fetcher object
-    NSString *selStr = (finishedSel ? NSStringFromSelector(finishedSel) : @"");
+    NSString *selStr = (finishedSel ? NSStringFromSelector(finishedSel) : nil);
     [self setProperty:delegate forKey:kAuthDelegateKey];
     [self setProperty:selStr forKey:kAuthSelectorKey];
 
@@ -390,7 +390,7 @@ CannotBeginFetch:
  finishedWithError:(NSError *)error {
   id delegate = [self propertyForKey:kAuthDelegateKey];
   NSString *selStr = [self propertyForKey:kAuthSelectorKey];
-  SEL finishedSel = NSSelectorFromString(selStr);
+  SEL finishedSel = selStr ? NSSelectorFromString(selStr) : NULL;
 
   BOOL isAuthorized = [auth isAuthorizedRequest:request_];
   if (!isAuthorized) {
@@ -793,14 +793,16 @@ CannotBeginFetch:
                      target:(id)target
                        data:(NSData *)data
                       error:(NSError *)error {
-  NSMethodSignature *sig = [target methodSignatureForSelector:sel];
-  NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
-  [invocation setSelector:sel];
-  [invocation setTarget:target];
-  [invocation setArgument:&self atIndex:2];
-  [invocation setArgument:&data atIndex:3];
-  [invocation setArgument:&error atIndex:4];
-  [invocation invoke];
+  if (target && sel) {
+    NSMethodSignature *sig = [target methodSignatureForSelector:sel];
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
+    [invocation setSelector:sel];
+    [invocation setTarget:target];
+    [invocation setArgument:&self atIndex:2];
+    [invocation setArgument:&data atIndex:3];
+    [invocation setArgument:&error atIndex:4];
+    [invocation invoke];
+  }
 }
 
 - (void)invokeSentDataCallback:(SEL)sel
@@ -808,32 +810,35 @@ CannotBeginFetch:
                didSendBodyData:(NSInteger)bytesWritten
              totalBytesWritten:(NSInteger)totalBytesWritten
      totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
-
-  NSMethodSignature *sig = [target methodSignatureForSelector:sel];
-  NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
-  [invocation setSelector:sel];
-  [invocation setTarget:target];
-  [invocation setArgument:&self atIndex:2];
-  [invocation setArgument:&bytesWritten atIndex:3];
-  [invocation setArgument:&totalBytesWritten atIndex:4];
-  [invocation setArgument:&totalBytesExpectedToWrite atIndex:5];
-  [invocation invoke];
+  if (target && sel) {
+    NSMethodSignature *sig = [target methodSignatureForSelector:sel];
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
+    [invocation setSelector:sel];
+    [invocation setTarget:target];
+    [invocation setArgument:&self atIndex:2];
+    [invocation setArgument:&bytesWritten atIndex:3];
+    [invocation setArgument:&totalBytesWritten atIndex:4];
+    [invocation setArgument:&totalBytesExpectedToWrite atIndex:5];
+    [invocation invoke];
+  }
 }
 
 - (BOOL)invokeRetryCallback:(SEL)sel
                      target:(id)target
                   willRetry:(BOOL)willRetry
                       error:(NSError *)error {
-  NSMethodSignature *sig = [target methodSignatureForSelector:sel];
-  NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
-  [invocation setSelector:sel];
-  [invocation setTarget:target];
-  [invocation setArgument:&self atIndex:2];
-  [invocation setArgument:&willRetry atIndex:3];
-  [invocation setArgument:&error atIndex:4];
-  [invocation invoke];
+  if (target && sel) {
+    NSMethodSignature *sig = [target methodSignatureForSelector:sel];
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
+    [invocation setSelector:sel];
+    [invocation setTarget:target];
+    [invocation setArgument:&self atIndex:2];
+    [invocation setArgument:&willRetry atIndex:3];
+    [invocation setArgument:&error atIndex:4];
+    [invocation invoke];
 
-  [invocation getReturnValue:&willRetry];
+    [invocation getReturnValue:&willRetry];
+  }
   return willRetry;
 }
 
@@ -843,13 +848,11 @@ CannotBeginFetch:
 totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
   SEL sel = [self sentDataSelector];
-  if (delegate_ && sel) {
-    [self invokeSentDataCallback:sel
-                          target:delegate_
-                 didSendBodyData:bytesWritten
-               totalBytesWritten:totalBytesWritten
-       totalBytesExpectedToWrite:totalBytesExpectedToWrite];
-  }
+  [self invokeSentDataCallback:sel
+                        target:delegate_
+               didSendBodyData:bytesWritten
+             totalBytesWritten:totalBytesWritten
+     totalBytesExpectedToWrite:totalBytesExpectedToWrite];
 
 #if NS_BLOCKS_AVAILABLE
   if (sentDataBlock_) {
@@ -1007,12 +1010,10 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
   if (shouldStopFetching) {
     // call the callbacks
-    if (finishedSEL_) {
-      [self invokeFetchCallback:finishedSEL_
-                         target:delegate_
-                           data:downloadedData_
-                          error:error];
-    }
+    [self invokeFetchCallback:finishedSEL_
+                       target:delegate_
+                         data:downloadedData_
+                        error:error];
 
 #if NS_BLOCKS_AVAILABLE
     if (completionBlock_) {
@@ -1058,12 +1059,10 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
     [[self retain] autorelease]; // in case the callback releases us
 
-    if (finishedSEL_) {
-      [self invokeFetchCallback:finishedSEL_
-                         target:delegate_
-                           data:nil
-                          error:error];
-    }
+    [self invokeFetchCallback:finishedSEL_
+                       target:delegate_
+                         data:nil
+                        error:error];
 
 #if NS_BLOCKS_AVAILABLE
     if (completionBlock_) {
@@ -1140,12 +1139,10 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
       BOOL willRetry = [self isRetryError:error];
 
-      if (retrySEL_) {
-        willRetry = [self invokeRetryCallback:retrySEL_
-                                       target:delegate_
-                                    willRetry:willRetry
-                                        error:error];
-      }
+      willRetry = [self invokeRetryCallback:retrySEL_
+                                     target:delegate_
+                                  willRetry:willRetry
+                                      error:error];
 
 #if NS_BLOCKS_AVAILABLE
       if (retryBlock_) {
