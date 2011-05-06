@@ -20,7 +20,12 @@
 #import "GTMHTTPFetcherTestServer.h"
 
 @interface GTMHTTPFetcherTestServer ()
-- (NSString *)valueForParameter:(NSString *)paramName path:(NSString *)path;
+- (NSString *)valueForParameter:(NSString *)paramName query:(NSString *)query;
+@end
+
+@interface SBJSON
+- (NSString*)stringWithObject:(id)value error:(NSError**)error;
+- (id)objectWithString:(NSString*)jsonrep error:(NSError**)error;
 @end
 
 @implementation GTMHTTPFetcherTestServer
@@ -70,9 +75,33 @@
   return [server_ port];
 }
 
+- (id)JSONFromData:(NSData *)data {
+  // TODO - replace with the system JSON parser
+  Class jsonClass = NSClassFromString(@"SBJSON");
+  if (!jsonClass) {
+    NSLog(@"JSON parser missing");
+  } else {
+    SBJSON *parser = [[[jsonClass alloc] init] autorelease];
+    NSString *jsonStr = [[[NSString alloc] initWithData:data
+                                               encoding:NSUTF8StringEncoding] autorelease];
+    if (jsonStr) {
+      // convert from JSON string to NSObject
+      NSError *error = nil;
+      id obj = [parser objectWithString:jsonStr error:&error];
+      if (obj == nil) {
+        NSLog(@"JSON parse error: %@\n  for JSON string: %@",
+              error, jsonStr);
+      }
+      return obj;
+    }
+  }
+  return nil;
+}
+
 - (GTMHTTPResponseMessage *)httpServer:(GTMHTTPServer *)server
                          handleRequest:(GTMHTTPRequestMessage *)request {
   NSAssert(server == server_, @"how'd we get a different server?!");
+
   GTMHTTPResponseMessage *response;
   UInt32 resultStatus = 0;
   NSData *data = nil;
@@ -84,17 +113,8 @@
   NSString *ifMatch = [requestHeaders objectForKey:@"If-Match"];
   NSString *ifNoneMatch = [requestHeaders objectForKey:@"If-None-Match"];
   NSString *authorization = [requestHeaders objectForKey:@"Authorization"];
-  NSString *path = [[request URL] absoluteString];
-
-  if ([path hasSuffix:@".auth"]) {
-    if (![authorization isEqualToString:@"GoogleLogin auth=GoodAuthToken"]) {
-      GTMHTTPResponseMessage *response =
-        [GTMHTTPResponseMessage emptyResponseWithCode:401];
-      return response;
-    } else {
-      path = [path substringToIndex:[path length] - 5];
-    }
-  }
+  NSString *path = [[request URL] path];
+  NSString *query = [[request URL] query];
 
   NSString *method = [request method];
 
@@ -165,7 +185,19 @@
     }
   }
 
-  NSString *statusStr = [self valueForParameter:@"status" path:path];
+  // if there's an "auth=foo" query parameter, then the value of the
+  // Authorization header should be "foo"
+  NSString *authStr = [self valueForParameter:@"oauth" query:query];
+  if (authStr) {
+    NSString *oauthMatch = [@"OAuth " stringByAppendingString:authStr];
+    if (![authorization isEqualToString:oauthMatch]) {
+      // return status 401 Unauthorized
+      GTMHTTPResponseMessage *response = [GTMHTTPResponseMessage emptyResponseWithCode:401];
+      return response;
+    }
+  }
+
+  NSString *statusStr = [self valueForParameter:@"status" query:query];
   if (statusStr) {
     // queries that have something like "?status=456" should fail with the
     // status code
@@ -191,6 +223,59 @@
       // it's an object delete; return empty data
       resultStatus = 200;
     } else {
+      if ([path hasSuffix:@".rpc"]) {
+        // JSON-RPC tests
+        //
+        // the fetch file name is like Foo.rpc; there should be local files
+        // with the expected JSON request body, and the response body
+        //
+        // replace the .rpc suffix with .request.txt and .response.txt
+        NSString *withoutRpcExtn = [path stringByDeletingPathExtension];
+        NSString *requestName = [withoutRpcExtn stringByAppendingPathExtension:@"request.txt"];
+        NSString *responseName = [withoutRpcExtn stringByAppendingPathExtension:@"response.txt"];
+
+        // read the expected request body from disk
+        NSString *requestPath = [docRoot_ stringByAppendingPathComponent:requestName];
+        NSData *requestData = [NSData dataWithContentsOfFile:requestPath];
+        if (!requestData) {
+          // we need a query request file for rpc tests
+          NSLog(@"Cannot find query request file \"%@\"", requestPath);
+        } else {
+          // verify that the RPC request body is as expected
+          NSDictionary *expectedJSON = [self JSONFromData:requestData];
+          NSDictionary *requestJSON = [self JSONFromData:[request body]];
+
+          if (expectedJSON && requestJSON
+              && [requestJSON isEqual:expectedJSON]) {
+            // the request body matches
+            //
+            // for rpc, the response file ought to be here;
+            // 404s shouldn't happen
+            NSString *responsePath = [docRoot_ stringByAppendingPathComponent:responseName];
+            if ([[NSFileManager defaultManager] fileExistsAtPath:responsePath]) {
+              path = responseName;
+            } else {
+              NSLog(@"Cannot find query response file \"%@\"", responsePath);
+            }
+          } else {
+            // the actual request did not match the expected request;
+            // log what's different
+            NSMutableSet *differentKeys = [NSMutableSet set];
+            NSArray *allKeys = [[requestJSON allKeys] arrayByAddingObjectsFromArray:[expectedJSON allKeys]];
+            for (NSString *key in allKeys) {
+              id requestValue = [requestJSON objectForKey:key];
+              id expectedValue = [expectedJSON objectForKey:key];
+              BOOL doesMatch = (requestValue == expectedValue
+                                || (requestValue && expectedValue
+                                    && [requestValue isEqual:expectedValue]));
+              if (!doesMatch) [differentKeys addObject:key];
+            }
+            NSLog(@"Mismatched request body for \"%@\" in keys (%@)", path,
+                  [[differentKeys allObjects] componentsJoinedByString:@", "]);
+          }
+        }
+      }
+
       // read and return the document from the path, or status 404 for not found
       NSString *docPath = [docRoot_ stringByAppendingPathComponent:path];
       data = [NSData dataWithContentsOfFile:docPath];
@@ -223,29 +308,31 @@ SendResponse:
   return response;
 }
 
-- (NSString *)valueForParameter:(NSString *)paramName path:(NSString *)path {
-  // search the URL path for a parameter beginning with "paramName=" and
+- (NSString *)valueForParameter:(NSString *)paramName query:(NSString *)query {
+  if (!query) return nil;
+
+  // search the query for a parameter beginning with "paramName=" and
   // ending with & or the end-of-string
   NSString *result = nil;
   NSString *paramWithEquals = [paramName stringByAppendingString:@"="];
-  NSRange paramNameRange = [path rangeOfString:paramWithEquals];
+  NSRange paramNameRange = [query rangeOfString:paramWithEquals];
   if (paramNameRange.location != NSNotFound) {
     // we found the param name; find the end of the parameter
     NSCharacterSet *endSet = [NSCharacterSet characterSetWithCharactersInString:@"&\n"];
     NSUInteger startOfParam = paramNameRange.location + paramNameRange.length;
     NSRange endSearchRange = NSMakeRange(startOfParam,
-                                         [path length] - startOfParam);
-    NSRange endRange = [path rangeOfCharacterFromSet:endSet
-                                             options:0
-                                               range:endSearchRange];
+                                         [query length] - startOfParam);
+    NSRange endRange = [query rangeOfCharacterFromSet:endSet
+                                              options:0
+                                                range:endSearchRange];
     if (endRange.location == NSNotFound) {
       // param goes to end of string
-      result = [path substringFromIndex:startOfParam];
+      result = [query substringFromIndex:startOfParam];
     } else {
       // found and end marker
       NSUInteger paramLen = endRange.location - startOfParam;
       NSRange foundRange = NSMakeRange(startOfParam, paramLen);
-      result = [path substringWithRange:foundRange];
+      result = [query substringWithRange:foundRange];
     }
   } else {
     // param not found

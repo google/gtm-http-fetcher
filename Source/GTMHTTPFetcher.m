@@ -392,18 +392,6 @@ CannotBeginFetch:
   NSString *selStr = [self propertyForKey:kAuthSelectorKey];
   SEL finishedSel = selStr ? NSSelectorFromString(selStr) : NULL;
 
-  BOOL isAuthorized = [auth isAuthorizedRequest:request_];
-  if (!isAuthorized) {
-    // wrap the actual authorization error into a more specific error object
-    NSDictionary *userInfo = nil;
-    if (error) {
-      userInfo = [NSDictionary dictionaryWithObject:error forKey:@"error"];
-    }
-    error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
-                                code:kGTMHTTPFetcherErrorAuthorizationFailed
-                            userInfo:userInfo];
-  }
-
   if (error != nil) {
     // we can't fetch without authorization
     [self invokeFetchCallback:finishedSel
@@ -1277,38 +1265,39 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
 #pragma mark Getters and Setters
 
-@dynamic cookieStorageMethod;
-@dynamic retryEnabled;
-@dynamic maxRetryInterval;
-@dynamic minRetryInterval;
-@dynamic retryCount;
-@dynamic nextRetryInterval;
-@dynamic statusCode;
-@dynamic responseHeaders;
-@dynamic fetchHistory;
-@dynamic userData;
-@dynamic properties;
+@dynamic cookieStorageMethod,
+         retryEnabled,
+         maxRetryInterval,
+         minRetryInterval,
+         retryCount,
+         nextRetryInterval,
+         statusCode,
+         responseHeaders,
+         fetchHistory,
+         userData,
+         properties;
 
-@synthesize mutableRequest = request_;
-@synthesize credential = credential_;
-@synthesize proxyCredential = proxyCredential_;
-@synthesize postData = postData_;
-@synthesize postStream = postStream_;
-@synthesize delegate = delegate_;
-@synthesize authorizer = authorizer_;
-@synthesize sentDataSelector = sentDataSEL_;
-@synthesize receivedDataSelector = receivedDataSEL_;
-@synthesize retrySelector = retrySEL_;
-@synthesize retryFactor = retryFactor_;
-@synthesize response = response_;
-@synthesize downloadedLength = downloadedLength_;
-@synthesize downloadedData = downloadedData_;
-@synthesize downloadPath = downloadPath_;
-@synthesize temporaryDownloadPath = temporaryDownloadPath_;
-@synthesize downloadFileHandle = downloadFileHandle_;
-@synthesize runLoopModes = runLoopModes_;
-@synthesize comment = comment_;
-@synthesize cookieStorage = cookieStorage_;
+@synthesize mutableRequest = request_,
+            credential = credential_,
+            proxyCredential = proxyCredential_,
+            postData = postData_,
+            postStream = postStream_,
+            delegate = delegate_,
+            authorizer = authorizer_,
+            sentDataSelector = sentDataSEL_,
+            receivedDataSelector = receivedDataSEL_,
+            retrySelector = retrySEL_,
+            retryFactor = retryFactor_,
+            response = response_,
+            downloadedLength = downloadedLength_,
+            downloadedData = downloadedData_,
+            downloadPath = downloadPath_,
+            temporaryDownloadPath = temporaryDownloadPath_,
+            downloadFileHandle = downloadFileHandle_,
+            runLoopModes = runLoopModes_,
+            comment = comment_,
+            log = log_,
+            cookieStorage = cookieStorage_;
 
 - (NSInteger)cookieStorageMethod {
   return cookieStorageMethod_;

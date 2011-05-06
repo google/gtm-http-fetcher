@@ -59,6 +59,14 @@
   return fetcher;
 }
 
+- (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL {
+  return [self fetcherWithRequest:[NSURLRequest requestWithURL:requestURL]];
+}
+
+- (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString {
+  return [self fetcherWithURL:[NSURL URLWithString:requestURLString]];
+}
+
 #pragma mark Fetch history settings
 
 // Turn on data caching to receive a copy of previously-retrieved objects.

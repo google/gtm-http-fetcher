@@ -262,9 +262,12 @@ enum {
   kGTMHTTPFetcherErrorAuthenticationChallengeFailed = -2,
   kGTMHTTPFetcherErrorChunkUploadFailed = -3,
   kGTMHTTPFetcherErrorFileHandleException = -4,
-  kGTMHTTPFetcherErrorAuthorizationFailed = -5,
+
+  // The code kGTMHTTPFetcherErrorAuthorizationFailed (-5) has been removed;
+  // look for status 401 instead.
 
   kGTMHTTPFetcherStatusNotModified = 304,
+  kGTMHTTPFetcherStatusUnauthorized = 401,
   kGTMHTTPFetcherStatusPreconditionFailed = 412
 };
 
@@ -279,11 +282,20 @@ enum {
 void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 
 @protocol GTMCookieStorageProtocol <NSObject>
+// a minimal protocol to keep the main fetcher class from being dependent
+// on having the GTMCookieStorage class available to compile.  The public
+// interface for cookie handling is the GTMCookieStorage class, accessible
+// from a fetcher service object's fetchHistory or from the fetcher's
+// +staticCookieStorage method.
 - (NSArray *)cookiesForURL:(NSURL *)theURL;
 - (void)setCookies:(NSArray *)newCookies;
 @end
 
 @protocol GTMHTTPFetchHistoryProtocol <NSObject>
+// a minimal protocol to keep the main fetcher class from being dependent
+// on having the GTMHTTPFetchHistory class available to compile.  The public
+// interface is the GTMHTTPFetchHistory class, accessible from a fetcher
+// service object's fetchHistory
 - (void)updateRequest:(NSMutableURLRequest *)request isHTTPGet:(BOOL)isHTTPGet;
 - (BOOL)shouldCacheETaggedData;
 - (NSData *)cachedDataForRequest:(NSURLRequest *)request;
@@ -361,6 +373,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
   NSTimeInterval lastRetryInterval_;
 
   NSString *comment_;               // comment for log
+  NSString *log_;
 }
 
 // create a fetcher
@@ -398,6 +411,10 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 // the default cookie storage method is kGTMHTTPFetcherCookieStorageMethodStatic
 // without a fetch history set, and kGTMHTTPFetcherCookieStorageMethodFetchHistory
 // with a fetch history set
+//
+// Applications needing control of cookies across a sequence of fetches should
+// create fetchers from a GTMHTTPFetcherService object (which encapsulates
+// fetch history) for a well-defined cookie store
 @property (assign) NSInteger cookieStorageMethod;
 
 + (id <GTMCookieStorageProtocol>)staticCookieStorage;
@@ -551,6 +568,9 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 @property (copy) NSString *comment;
 
 - (void)setCommentWithFormat:(id)format, ...;
+
+// log of request and response, if logging is enabled
+@property (copy) NSString *log;
 
 // using the fetcher while a modal dialog is displayed requires setting the
 // run-loop modes to include NSModalPanelRunLoopMode

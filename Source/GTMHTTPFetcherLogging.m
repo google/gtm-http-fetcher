@@ -191,18 +191,18 @@ static NSString* gLoggingProcessName = nil;
       if (jsonStr) {
         // convert from JSON string to NSObjects and back to a formatted string
         NSMutableDictionary *obj = [parser objectWithString:jsonStr error:NULL];
-        if ([obj isKindOfClass:[NSMutableDictionary class]]) {
+        if (obj) {
           if (outJSON) *outJSON = obj;
-
-          // for security and privacy, omit OAuth 2 response refresh tokens
-          //
-          // we'll assume that any JSON with "refresh_token" and "access_token"
-          // keys in the response is an OAuth 2 token endpoint response
-          if ([obj valueForKey:@"refresh_token"] != nil
-              && [obj valueForKey:@"access_token"] != nil) {
-            [obj setObject:@"_snip_" forKey:@"refresh_token"];
+          if ([obj isKindOfClass:[NSMutableDictionary class]]) {
+            // for security and privacy, omit OAuth 2 response refresh tokens
+            //
+            // we'll assume that any JSON with "refresh_token" and "access_token"
+            // keys in the response is an OAuth 2 token endpoint response
+            if ([obj valueForKey:@"refresh_token"] != nil
+                && [obj valueForKey:@"access_token"] != nil) {
+              [obj setObject:@"_snip_" forKey:@"refresh_token"];
+            }
           }
-
           NSString *formatted = [parser stringWithObject:obj error:NULL];
           if (formatted) return formatted;
         }
@@ -664,16 +664,18 @@ static NSString* gLoggingProcessName = nil;
         statusString = [NSString stringWithFormat:@"%ld", (long)status];
 
         // report any JSON-RPC error
-        NSDictionary *jsonError = [responseJSON objectForKey:@"error"];
-        if ([jsonError isKindOfClass:[NSDictionary class]]) {
-          NSString *jsonCode = [[jsonError valueForKey:@"code"] description];
-          NSString *jsonMessage = [jsonError valueForKey:@"message"];
-          if (jsonCode || jsonMessage) {
-            NSString *jsonErrFmt = @"&nbsp;&nbsp;&nbsp;<i>JSON error:</i> <FONT"
-              @" COLOR=\"#FF00FF\">%@ %@</FONT>";
-            statusString = [statusString stringByAppendingFormat:jsonErrFmt,
-                            jsonCode ? jsonCode : @"",
-                            jsonMessage ? jsonMessage : @""];
+        if ([responseJSON isKindOfClass:[NSDictionary class]]) {
+          NSDictionary *jsonError = [responseJSON objectForKey:@"error"];
+          if ([jsonError isKindOfClass:[NSDictionary class]]) {
+            NSString *jsonCode = [[jsonError valueForKey:@"code"] description];
+            NSString *jsonMessage = [jsonError valueForKey:@"message"];
+            if (jsonCode || jsonMessage) {
+              NSString *jsonErrFmt = @"&nbsp;&nbsp;&nbsp;<i>JSON error:</i> <FONT"
+                @" COLOR=\"#FF00FF\">%@ %@</FONT>";
+              statusString = [statusString stringByAppendingFormat:jsonErrFmt,
+                              jsonCode ? jsonCode : @"",
+                              jsonMessage ? jsonMessage : @""];
+            }
           }
         }
       } else {
@@ -822,6 +824,10 @@ static NSString* gLoggingProcessName = nil;
   if (error) {
     [copyable appendFormat:@"Error: %@\n", error];
   }
+
+  // save to log property before adding the separator
+  self.log = copyable;
+
   [copyable appendString:@"-----------------------------------------------------------\n"];
 
 

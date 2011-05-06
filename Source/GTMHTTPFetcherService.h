@@ -46,11 +46,14 @@
 
 // Create a fetcher
 //
-// fetcherWithRequest will return an autoreleased fetcher, but if
-// the fetcher is successfully created, the connection should retain the
+// These methods will return an autoreleased fetcher, but if
+// the fetcher is successfully created, the connection will retain the
 // fetcher for the life of the connection as well. So the caller doesn't have
-// to retain the fetcher explicitly unless they want to be able to cancel it.
+// to retain the fetcher explicitly unless they want to be able to monitor
+// or cancel it.
 - (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
+- (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL;
+- (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString;
 
 // Properties to be applied to each fetcher;
 // see GTMHTTPFetcher.h for descriptions

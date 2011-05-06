@@ -44,6 +44,14 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 - (void)reportProgressManually;
 
 - (NSUInteger)fullUploadLength;
+
+-(BOOL)chunkFetcher:(GTMHTTPFetcher *)chunkFetcher
+          willRetry:(BOOL)willRetry
+           forError:(NSError *)error;
+
+- (void)chunkFetcher:(GTMHTTPFetcher *)chunkFetcher
+    finishedWithData:(NSData *)data
+               error:(NSError *)error;
 @end
 
 @interface GTMHTTPUploadFetcher (PrivateMethods)
