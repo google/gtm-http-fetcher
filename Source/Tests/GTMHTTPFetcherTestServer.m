@@ -23,8 +23,7 @@
 - (NSString *)valueForParameter:(NSString *)paramName query:(NSString *)query;
 @end
 
-@interface SBJSON
-- (NSString*)stringWithObject:(id)value error:(NSError**)error;
+@interface GTMSBJSON
 - (id)objectWithString:(NSString*)jsonrep error:(NSError**)error;
 @end
 
@@ -77,11 +76,14 @@
 
 - (id)JSONFromData:(NSData *)data {
   // TODO - replace with the system JSON parser
-  Class jsonClass = NSClassFromString(@"SBJSON");
+  Class jsonClass = NSClassFromString(@"SBJsonParser");
+  if (!jsonClass) {
+    jsonClass = NSClassFromString(@"SBJSON");
+  }
   if (!jsonClass) {
     NSLog(@"JSON parser missing");
   } else {
-    SBJSON *parser = [[[jsonClass alloc] init] autorelease];
+    GTMSBJSON *parser = [[[jsonClass alloc] init] autorelease];
     NSString *jsonStr = [[[NSString alloc] initWithData:data
                                                encoding:NSUTF8StringEncoding] autorelease];
     if (jsonStr) {

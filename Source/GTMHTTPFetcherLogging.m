@@ -39,7 +39,7 @@
 @end
 
 // If SBJSON is available, it is used for formatting JSON
-@interface SBJSON
+@interface GTMFetcherSBJSON
 - (void)setHumanReadable:(BOOL)flag;
 - (NSString*)stringWithObject:(id)value error:(NSError**)error;
 - (id)objectWithString:(NSString*)jsonrep error:(NSError**)error;
@@ -182,10 +182,25 @@ static NSString* gLoggingProcessName = nil;
   // use that
   if ([contentType hasPrefix:@"application/json"]
       && [inputData length] > 5) {
-    Class jsonClass = NSClassFromString(@"SBJSON");
-    if (jsonClass) {
-      SBJSON *parser = [[[jsonClass alloc] init] autorelease];
-      [parser setHumanReadable:YES];
+    Class jsonParseClass = NSClassFromString(@"SBJsonParser");
+    GTMFetcherSBJSON *parser = nil;
+    GTMFetcherSBJSON *writer = nil;
+    if (jsonParseClass) {
+      Class jsonWriteClass = NSClassFromString(@"SBJsonWriter");
+      if (jsonWriteClass) {
+        // newer SBJsonParser and SBJsonWriter
+        parser = [[[jsonParseClass alloc] init] autorelease];
+        writer = [[[jsonWriteClass alloc] init] autorelease];
+      }
+    };
+    if (!parser || !writer) {
+      // older SBJSON
+      jsonParseClass = NSClassFromString(@"SBJSON");
+      parser = [[[jsonParseClass alloc] init] autorelease];
+      writer = parser;
+    }
+
+    if (parser && writer) {
       NSString *jsonStr = [[[NSString alloc] initWithData:inputData
                                                  encoding:NSUTF8StringEncoding] autorelease];
       if (jsonStr) {
@@ -203,7 +218,8 @@ static NSString* gLoggingProcessName = nil;
               [obj setObject:@"_snip_" forKey:@"refresh_token"];
             }
           }
-          NSString *formatted = [parser stringWithObject:obj error:NULL];
+          [writer setHumanReadable:YES];
+          NSString *formatted = [writer stringWithObject:obj error:NULL];
           if (formatted) return formatted;
         }
       }

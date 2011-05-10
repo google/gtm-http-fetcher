@@ -267,6 +267,7 @@ enum {
   // look for status 401 instead.
 
   kGTMHTTPFetcherStatusNotModified = 304,
+  kGTMHTTPFetcherStatusBadRequest = 400,
   kGTMHTTPFetcherStatusUnauthorized = 401,
   kGTMHTTPFetcherStatusPreconditionFailed = 412
 };
