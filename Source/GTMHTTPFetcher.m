@@ -41,7 +41,9 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 @property (copy) NSString *temporaryDownloadPath;
 @property (retain) id <GTMCookieStorageProtocol> cookieStorage;
 @property (readwrite, retain) NSData *downloadedData;
+#if NS_BLOCKS_AVAILABLE
 @property (copy) void (^completionBlock)(NSData *, NSError *);
+#endif
 
 - (BOOL)beginFetchMayDelay:(BOOL)mayDelay
               mayAuthorize:(BOOL)mayAuthorize;
