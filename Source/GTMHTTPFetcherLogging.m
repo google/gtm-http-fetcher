@@ -69,6 +69,7 @@
 
 // fetchers come and fetchers go, but statics are forever
 static BOOL gIsLoggingEnabled = NO;
+static BOOL gIsLoggingToFile = YES;
 static NSString *gLoggingDirectoryPath = nil;
 static NSString *gLoggingDateStamp = nil;
 static NSString* gLoggingProcessName = nil;
@@ -125,6 +126,14 @@ static NSString* gLoggingProcessName = nil;
 
 + (BOOL)isLoggingEnabled {
   return gIsLoggingEnabled;
+}
+
++ (void)setLoggingToFileEnabled:(BOOL)flag {
+  gIsLoggingToFile = flag;
+}
+
++ (BOOL)isLoggingToFileEnabled {
+  return gIsLoggingToFile;
 }
 
 + (void)setLoggingProcessName:(NSString *)str {
@@ -409,7 +418,7 @@ static NSString* gLoggingProcessName = nil;
   NSString *dirName = [NSString stringWithFormat:@"%@_log_%@",
                        processName, dateStamp];
   NSString *logDirectory = [parentDir stringByAppendingPathComponent:dirName];
-  if (![[self class] makeDirectoryUpToPath:logDirectory]) return;
+  if (gIsLoggingToFile && ![[self class] makeDirectoryUpToPath:logDirectory]) return;
 
   // each response's NSData goes into its own xml or txt file, though all
   // responses for this run of the app share a main html file.  This
@@ -471,12 +480,13 @@ static NSString* gLoggingProcessName = nil;
       NSString* wrappedStr = [NSString stringWithFormat:wrapFmt, responseDataStr];
       {
         NSError *wrappedStrError = nil;
-        if (![wrappedStr writeToFile:textFilePath
-                          atomically:NO
-                            encoding:NSUTF8StringEncoding
-                               error:&wrappedStrError]) {
-          NSLog(@"%@ logging write error:%@ (%@)",
-                [self class], wrappedStrError, responseDataUnformattedFileName);
+        if (gIsLoggingToFile
+            && ![wrappedStr writeToFile:textFilePath
+                             atomically:NO
+                               encoding:NSUTF8StringEncoding
+                                  error:&wrappedStrError]) {
+              NSLog(@"%@ logging write error:%@ (%@)",
+                    [self class], wrappedStrError, responseDataUnformattedFileName);
         }
       }
 
@@ -510,12 +520,13 @@ static NSString* gLoggingProcessName = nil;
       NSString *formattedFilePath = [logDirectory stringByAppendingPathComponent:responseDataFormattedFileName];
 
       NSError *downloadedError = nil;
-      if (![downloadedData_ writeToFile:formattedFilePath
-                                options:0
-                                  error:&downloadedError]) {
-        NSLog(@"%@ logging write error:%@ (%@)",
-              [self class], downloadedError, responseDataFormattedFileName);
-      }
+      if (gIsLoggingToFile
+          && ![downloadedData_ writeToFile:formattedFilePath
+                                   options:0
+                                     error:&downloadedError]) {
+            NSLog(@"%@ logging write error:%@ (%@)",
+                  [self class], downloadedError, responseDataFormattedFileName);
+          }
     }
   }
 
@@ -854,35 +865,37 @@ static NSString* gLoggingProcessName = nil;
   //   <span onCopy='window.event.clipboardData.setData(\"Text\",
   //   \"copyable stuff\");return false;'>Copy here.</span>"
   // would work everywhere, but it only works in Safari as of 8/2010
-  NSString *copyablePath = [logDirectory stringByAppendingPathComponent:copyableFileName];
-  NSError *copyableError = nil;
-  if (![copyable writeToFile:copyablePath
-                  atomically:NO
-                    encoding:NSUTF8StringEncoding
-                       error:&copyableError]) {
-   // error writing to file
-    NSLog(@"%@ logging write error:%@ (%@)",
-          [self class], copyableError, copyablePath);
+  if (gIsLoggingToFile) {
+    NSString *copyablePath = [logDirectory stringByAppendingPathComponent:copyableFileName];
+    NSError *copyableError = nil;
+    if (![copyable writeToFile:copyablePath
+                    atomically:NO
+                      encoding:NSUTF8StringEncoding
+                         error:&copyableError]) {
+      // error writing to file
+      NSLog(@"%@ logging write error:%@ (%@)",
+            [self class], copyableError, copyablePath);
+    }
+
+    [outputHTML appendString:@"<br><hr><p>"];
+
+    // append the HTML to the main output file
+    const char* htmlBytes = [outputHTML UTF8String];
+    NSOutputStream *stream = [NSOutputStream outputStreamToFileAtPath:htmlPath
+                                                               append:YES];
+    [stream open];
+    [stream write:(const uint8_t *) htmlBytes maxLength:strlen(htmlBytes)];
+    [stream close];
+
+    // make a symlink to the latest html
+    NSString *symlinkName = [NSString stringWithFormat:@"%@_log_newest.html",
+                             processName];
+    NSString *symlinkPath = [parentDir stringByAppendingPathComponent:symlinkName];
+
+    [[self class] removeItemAtPath:symlinkPath];
+    [[self class] createSymbolicLinkAtPath:symlinkPath
+                       withDestinationPath:htmlPath];
   }
-
-  [outputHTML appendString:@"<br><hr><p>"];
-
-  // append the HTML to the main output file
-  const char* htmlBytes = [outputHTML UTF8String];
-  NSOutputStream *stream = [NSOutputStream outputStreamToFileAtPath:htmlPath
-                                                             append:YES];
-  [stream open];
-  [stream write:(const uint8_t *) htmlBytes maxLength:strlen(htmlBytes)];
-  [stream close];
-
-  // make a symlink to the latest html
-  NSString *symlinkName = [NSString stringWithFormat:@"%@_log_newest.html",
-                           processName];
-  NSString *symlinkPath = [parentDir stringByAppendingPathComponent:symlinkName];
-
-  [[self class] removeItemAtPath:symlinkPath];
-  [[self class] createSymbolicLinkAtPath:symlinkPath
-                     withDestinationPath:htmlPath];
 }
 
 - (BOOL)logCapturePostStream {

@@ -35,13 +35,19 @@
 #import "GTMHTTPFetcher.h"
 #import "GTMHTTPFetchHistory.h"
 
-@interface GTMHTTPFetcherService : NSObject {
+@interface GTMHTTPFetcherService : NSObject<GTMHTTPFetcherServiceProtocol> {
  @private
+  NSMutableDictionary *delayedHosts_;
+  NSMutableDictionary *runningHosts_;
+  NSUInteger maxRunningFetchersPerHost_;
+
   GTMHTTPFetchHistory *fetchHistory_;
   NSArray *runLoopModes_;
   NSURLCredential *credential_;       // username & password
   NSURLCredential *proxyCredential_;  // credential supplied to proxy servers
   NSInteger cookieStorageMethod_;
+
+  id <GTMFetcherAuthorizationProtocol> authorizer_;
 }
 
 // Create a fetcher
@@ -55,17 +61,32 @@
 - (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL;
 - (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString;
 
+// Queues of delayed and running fetchers. Each dictionary contains arrays
+// of fetchers, keyed by host
+//
+// A max value of 0 means no fetchers should be delayed.
+@property (assign) NSUInteger maxRunningFetchersPerHost;
+@property (retain, readonly) NSDictionary *delayedHosts;
+@property (retain, readonly) NSDictionary *runningHosts;
+
+- (void)stopAllFetchers;
+
 // Properties to be applied to each fetcher;
 // see GTMHTTPFetcher.h for descriptions
 @property (retain) NSArray *runLoopModes;
 @property (retain) NSURLCredential *credential;
 @property (retain) NSURLCredential *proxyCredential;
-@property (assign) NSInteger cookieStorageMethod;
-@property (assign) BOOL shouldCacheETaggedData;
 
+// Fetch history
 @property (retain) GTMHTTPFetchHistory *fetchHistory;
+
+@property (assign) NSInteger cookieStorageMethod;
+@property (assign) BOOL shouldRememberETags;      // default: YES
+@property (assign) BOOL shouldCacheETaggedData;   // default: NO
 
 - (void)clearETaggedDataCache;
 - (void)clearHistory;
+
+@property (nonatomic, retain) id <GTMFetcherAuthorizationProtocol> authorizer;
 
 @end

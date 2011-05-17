@@ -70,21 +70,12 @@ static const NSTimeInterval kGiveUpInterval = 30.0;
 // file available in Tests folder
 static NSString *const kValidFileName = @"gettysburgaddress.txt";
 
-- (NSString *)docPathForName:(NSString *)fileName {
+- (NSString *)docRootPath {
   NSBundle *testBundle = [NSBundle bundleForClass:[self class]];
   STAssertNotNil(testBundle, nil);
-
-  NSString *docPath = [testBundle pathForResource:fileName
-                                           ofType:nil];
-  STAssertNotNil(docPath, nil);
-
-  return docPath;
-}
-
-- (NSString *)docRootPath {
-  NSString *docRoot = [self docPathForName:kValidFileName];
-  docRoot = [docRoot stringByDeletingLastPathComponent];
-  return docRoot;
+  
+  NSString *docFolder = [testBundle resourcePath];
+  return docFolder;
 }
 
 - (void)setUp {

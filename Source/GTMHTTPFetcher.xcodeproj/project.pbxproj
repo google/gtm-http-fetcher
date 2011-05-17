@@ -24,6 +24,7 @@
 		4F74DAF811E7C7C900F2D927 /* GTMHTTPFetcherFetchingTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F74DAF711E7C7C900F2D927 /* GTMHTTPFetcherFetchingTest.m */; };
 		4F74DAFC11E7C7CF00F2D927 /* GTMHTTPFetcherCachingTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F74DAFB11E7C7CF00F2D927 /* GTMHTTPFetcherCachingTest.m */; };
 		4F74DB4411E7CF4200F2D927 /* gettysburgaddress.txt in Resources */ = {isa = PBXBuildFile; fileRef = 4F74DB4311E7CF4200F2D927 /* gettysburgaddress.txt */; };
+		4F92DBC51379E9CB0071BAC1 /* GTMHTTPFetcherServiceTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 4F92DBC41379E9CB0071BAC1 /* GTMHTTPFetcherServiceTest.m */; };
 		4FCC71F711EBF5970097924C /* GTMGatherInputStreamTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 4FCC71F611EBF5970097924C /* GTMGatherInputStreamTest.m */; };
 		4FCC75E511EE6B1C0097924C /* GTMHTTPFetcherService.m in Sources */ = {isa = PBXBuildFile; fileRef = 4FCC75E411EE6B1C0097924C /* GTMHTTPFetcherService.m */; };
 		4FCC75E611EE6B1C0097924C /* GTMHTTPFetcherService.m in Sources */ = {isa = PBXBuildFile; fileRef = 4FCC75E411EE6B1C0097924C /* GTMHTTPFetcherService.m */; };
@@ -53,6 +54,7 @@
 		4F74DAFB11E7C7CF00F2D927 /* GTMHTTPFetcherCachingTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMHTTPFetcherCachingTest.m; path = Tests/GTMHTTPFetcherCachingTest.m; sourceTree = "<group>"; };
 		4F74DB4311E7CF4200F2D927 /* gettysburgaddress.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = gettysburgaddress.txt; path = Tests/Data/gettysburgaddress.txt; sourceTree = "<group>"; };
 		4F8D22D81253E0960095BBF5 /* ReleaseNotes.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ReleaseNotes.txt; sourceTree = "<group>"; };
+		4F92DBC41379E9CB0071BAC1 /* GTMHTTPFetcherServiceTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMHTTPFetcherServiceTest.m; path = Tests/GTMHTTPFetcherServiceTest.m; sourceTree = "<group>"; };
 		4FCC71F611EBF5970097924C /* GTMGatherInputStreamTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GTMGatherInputStreamTest.m; path = Tests/GTMGatherInputStreamTest.m; sourceTree = "<group>"; };
 		4FCC75E411EE6B1C0097924C /* GTMHTTPFetcherService.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GTMHTTPFetcherService.m; sourceTree = "<group>"; };
 		4FCC75E711EE6B230097924C /* GTMHTTPFetcherService.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GTMHTTPFetcherService.h; sourceTree = "<group>"; };
@@ -125,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				4F74DAF711E7C7C900F2D927 /* GTMHTTPFetcherFetchingTest.m */,
+				4F92DBC41379E9CB0071BAC1 /* GTMHTTPFetcherServiceTest.m */,
 				4F74DAFB11E7C7CF00F2D927 /* GTMHTTPFetcherCachingTest.m */,
 				4F2FCAC31267882800A74543 /* GTMHTTPFetcherUtilityTest.m */,
 				4FCC71F611EBF5970097924C /* GTMGatherInputStreamTest.m */,
@@ -262,6 +265,7 @@
 				4FCC75E511EE6B1C0097924C /* GTMHTTPFetcherService.m in Sources */,
 				4FCC787A11EFA6030097924C /* GTMHTTPFetchHistory.m in Sources */,
 				4F2FCAC41267882800A74543 /* GTMHTTPFetcherUtilityTest.m in Sources */,
+				4F92DBC51379E9CB0071BAC1 /* GTMHTTPFetcherServiceTest.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

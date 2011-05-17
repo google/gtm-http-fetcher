@@ -64,6 +64,11 @@
 + (void)setLoggingEnabled:(BOOL)flag;
 + (BOOL)isLoggingEnabled;
 
+// client apps can turn off logging to a file if they want to only check
+// the fetcher's log property
++ (void)setLoggingToFileEnabled:(BOOL)flag;
++ (BOOL)isLoggingToFileEnabled;
+
 // client apps can optionally specify process name and date string used in
 // log file names
 + (void)setLoggingProcessName:(NSString *)str;

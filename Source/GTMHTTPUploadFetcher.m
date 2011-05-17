@@ -595,11 +595,11 @@ totalBytesExpectedToSend:0];
     return NO;
   }
 
-  if (delegate_ && retrySEL_) {
+  if (delegate_ && retrySel_) {
 
     // call the client with the upload fetcher as the sender (not the chunk
     // fetcher) to find out if it wants to retry
-    willRetry = [self invokeRetryCallback:retrySEL_
+    willRetry = [self invokeRetryCallback:retrySel_
                                    target:delegate_
                                 willRetry:willRetry
                                     error:error];

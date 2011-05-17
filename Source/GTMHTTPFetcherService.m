@@ -19,29 +19,52 @@
 
 #import "GTMHTTPFetcherService.h"
 
+@interface GTMHTTPFetcher (ServiceMethods)
+- (BOOL)beginFetchMayDelay:(BOOL)mayDelay
+              mayAuthorize:(BOOL)mayAuthorize;
+@end
+
+@interface GTMHTTPFetcherService ()
+@property (retain, readwrite) NSDictionary *delayedHosts;
+@property (retain, readwrite) NSDictionary *runningHosts;
+@end
+
 @implementation GTMHTTPFetcherService
 
-@synthesize runLoopModes = runLoopModes_;
-@synthesize credential = credential_;
-@synthesize proxyCredential = proxyCredential_;
-@synthesize cookieStorageMethod = cookieStorageMethod_;
-@synthesize fetchHistory = fetchHistory_;
+@synthesize maxRunningFetchersPerHost = maxRunningFetchersPerHost_,
+            runLoopModes = runLoopModes_,
+            credential = credential_,
+            proxyCredential = proxyCredential_,
+            cookieStorageMethod = cookieStorageMethod_,
+            fetchHistory = fetchHistory_,
+            authorizer = authorizer_;
 
-@dynamic shouldCacheETaggedData;
+@dynamic delayedHosts,
+         runningHosts,
+         shouldCacheETaggedData;
 
 - (id)init {
-  if ((self = [super init]) != nil) {
+  self = [super init];
+  if (self) {
     fetchHistory_ = [[GTMHTTPFetchHistory alloc] init];
+    delayedHosts_ = [[NSMutableDictionary alloc] init];
+    runningHosts_ = [[NSMutableDictionary alloc] init];
     cookieStorageMethod_ = kGTMHTTPFetcherCookieStorageMethodFetchHistory;
-  }
+
+    // The default limit is 10 simultaneous fetchers targeting each host
+    maxRunningFetchersPerHost_ = 10;
+}
   return self;
 }
 
 - (void)dealloc {
-  [fetchHistory_ release];
-  [runLoopModes_ release];
-  [credential_ release];
-  [proxyCredential_ release];
+  self.delayedHosts = nil;
+  self.runningHosts = nil;
+  self.fetchHistory = nil;
+  self.runLoopModes = nil;
+  self.credential = nil;
+  self.proxyCredential = nil;
+  self.authorizer = nil;
   [super dealloc];
 }
 
@@ -50,11 +73,13 @@
 - (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request {
   GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:request];
 
-  [fetcher setFetchHistory:[self fetchHistory]];
-  [fetcher setRunLoopModes:[self runLoopModes]];
-  [fetcher setCookieStorageMethod:[self cookieStorageMethod]];
-  [fetcher setCredential:[self credential]];
-  [fetcher setProxyCredential:[self proxyCredential]];
+  fetcher.fetchHistory = self.fetchHistory;
+  fetcher.runLoopModes = self.runLoopModes;
+  fetcher.cookieStorageMethod = self.cookieStorageMethod;
+  fetcher.credential = self.credential;
+  fetcher.proxyCredential = self.proxyCredential;
+  fetcher.authorizer = self.authorizer;
+  fetcher.service = self;
 
   return fetcher;
 }
@@ -67,42 +92,235 @@
   return [self fetcherWithURL:[NSURL URLWithString:requestURLString]];
 }
 
-#pragma mark Fetch history settings
+#pragma mark Queue Management
+
+- (void)addRunningFetcher:(GTMHTTPFetcher *)fetcher
+                  forHost:(NSString *)host {
+  // Add to the array of running fetchers for this host, creating the array
+  // if needed
+  NSMutableArray *runningForHost = [runningHosts_ objectForKey:host];
+  if (runningForHost == nil) {
+    runningForHost = [NSMutableArray arrayWithObject:fetcher];
+    [runningHosts_ setObject:runningForHost forKey:host];
+  } else {
+    [runningForHost addObject:fetcher];
+  }
+}
+
+- (void)addDelayedFetcher:(GTMHTTPFetcher *)fetcher
+                  forHost:(NSString *)host {
+  // Add to the array of delayed fetchers for this host, creating the array
+  // if needed
+  NSMutableArray *delayedForHost = [delayedHosts_ objectForKey:host];
+  if (delayedForHost == nil) {
+    delayedForHost = [NSMutableArray arrayWithObject:fetcher];
+    [delayedHosts_ setObject:delayedForHost forKey:host];
+  } else {
+    [delayedForHost addObject:fetcher];
+  }
+}
+
+- (BOOL)fetcherShouldBeginFetching:(GTMHTTPFetcher *)fetcher {
+  // Entry point from the fetcher
+  @synchronized(self) {
+    NSString *host = [[[fetcher mutableRequest] URL] host];
+
+    if ([host length] == 0) {
+#if DEBUG
+      NSAssert1(0, @"%@ lacks host", fetcher);
+#endif
+      return YES;
+    }
+
+    NSMutableArray *runningForHost = [runningHosts_ objectForKey:host];
+    if (runningForHost != nil
+        && [runningForHost indexOfObjectIdenticalTo:fetcher] != NSNotFound) {
+#if DEBUG
+      NSAssert1(0, @"%@ was already running", fetcher);
+#endif
+      return YES;
+    }
+
+    // We'll save the host that serves as the key for this fetcher's array
+    // to avoid any chance of the underlying request changing, stranding
+    // the fetcher in the wrong array
+    fetcher.serviceHost = host;
+    fetcher.thread = [NSThread currentThread];
+
+    if (maxRunningFetchersPerHost_ == 0
+        || maxRunningFetchersPerHost_ > [runningForHost count]) {
+      [self addRunningFetcher:fetcher forHost:host];
+      return YES;
+    } else {
+      [self addDelayedFetcher:fetcher forHost:host];
+      return NO;
+    }
+  }
+  return YES;
+}
+
+// Fetcher start and stop methods, invoked on the appropriate thread for
+// the fetcher
+- (void)startFetcherOnCurrentThread:(GTMHTTPFetcher *)fetcher {
+  [fetcher beginFetchMayDelay:NO
+                 mayAuthorize:YES];
+}
+
+- (void)startFetcher:(GTMHTTPFetcher *)fetcher {
+  NSThread *thread = [fetcher thread];
+  if (0 && [thread isEqual:[NSThread currentThread]]) {
+    // Same thread
+    [self startFetcherOnCurrentThread:fetcher];
+  } else {
+    // Different thread
+    [self performSelector:@selector(startFetcherOnCurrentThread:)
+                 onThread:thread
+               withObject:fetcher
+            waitUntilDone:NO];
+  }
+}
+
+- (void)stopFetcherOnCurrentThread:(GTMHTTPFetcher *)fetcher {
+  [fetcher stopFetching];
+}
+
+- (void)stopFetcher:(GTMHTTPFetcher *)fetcher {
+  NSThread *thread = [fetcher thread];
+  if ([thread isEqual:[NSThread currentThread]]) {
+    // Same thread
+    [self stopFetcherOnCurrentThread:fetcher];
+  } else {
+    // Different thread
+    [self performSelector:@selector(stopFetcherOnCurrentThread:)
+                 onThread:thread
+               withObject:fetcher
+            waitUntilDone:NO];
+  }
+}
+
+
+
+- (void)fetcherDidStop:(GTMHTTPFetcher *)fetcher {
+  // Entry point from the fetcher
+  @synchronized(self) {
+    NSString *host = fetcher.serviceHost;
+    if (!host) {
+      // fetcher has been stopped previously
+      return;
+    }
+
+    NSMutableArray *runningForHost = [runningHosts_ objectForKey:host];
+    [runningForHost removeObject:fetcher];
+
+    NSMutableArray *delayedForHost = [delayedHosts_ objectForKey:host];
+    [delayedForHost removeObject:fetcher];
+
+    while ([delayedForHost count] > 0
+           && [runningForHost count] < maxRunningFetchersPerHost_) {
+      // Start another delayed fetcher running
+      GTMHTTPFetcher *nextFetcher = [delayedForHost objectAtIndex:0];
+
+      [self addRunningFetcher:nextFetcher forHost:host];
+      runningForHost = [runningHosts_ objectForKey:host];
+
+      [delayedForHost removeObjectAtIndex:0];
+      [self startFetcher:nextFetcher];
+    }
+
+    if ([runningForHost count] == 0) {
+      // None left; remove the empty array
+      [runningHosts_ removeObjectForKey:host];
+    }
+
+    if ([delayedForHost count] == 0) {
+      [delayedHosts_ removeObjectForKey:host];
+    }
+
+    // The fetcher is no longer in the running or the delayed array,
+    // so remove its host and thread properties
+    fetcher.serviceHost = nil;
+    fetcher.thread = nil;
+  }
+}
+
+- (void)stopAllFetchers {
+  // Remove fetchers from the delayed list to avoid fetcherDidStop: from
+  // starting more fetchers running as a side effect of stopping one
+  NSDictionary *delayedHostsCopy = [[delayedHosts_ copy] autorelease];
+  [delayedHosts_ removeAllObjects];
+
+  for (NSArray *delayedForHost in delayedHostsCopy) {
+    for (GTMHTTPFetcher *fetcher in delayedForHost) {
+      [self stopFetcher:fetcher];
+    }
+  }
+
+  for (NSArray *runningForHost in runningHosts_) {
+    for (GTMHTTPFetcher *fetcher in runningForHost) {
+      [self stopFetcher:fetcher];
+    }
+  }
+
+  [runningHosts_ removeAllObjects];
+}
+
+#pragma mark Fetch History Settings
 
 // Turn on data caching to receive a copy of previously-retrieved objects.
 // Otherwise, fetches may return status 304 (No Change) rather than actual data
 - (void)setShouldCacheETaggedData:(BOOL)flag {
-  BOOL wasCaching = [self shouldCacheETaggedData];
-
-  [[self fetchHistory] setShouldCacheETaggedData:flag];
-
-  if (wasCaching && !flag) {
-    // users expect turning off caching to free up the cache memory
-    [self clearETaggedDataCache];
-  }
+  self.fetchHistory.shouldCacheETaggedData = flag;
 }
 
 - (BOOL)shouldCacheETaggedData {
-  return [[self fetchHistory] shouldCacheETaggedData];
+  return self.fetchHistory.shouldCacheETaggedData;
 }
 
 - (void)setETaggedDataCacheCapacity:(NSUInteger)totalBytes {
-  [[self fetchHistory] setMemoryCapacity:totalBytes];
+  self.fetchHistory.memoryCapacity = totalBytes;
 }
 
 - (NSUInteger)ETaggedDataCacheCapacity {
-  return [[self fetchHistory] memoryCapacity];
+  return self.fetchHistory.memoryCapacity;
+}
+
+- (void)setShouldRememberETags:(BOOL)flag {
+  self.fetchHistory.shouldRememberETags = flag;
+}
+
+- (BOOL)shouldRememberETags {
+  return self.fetchHistory.shouldRememberETags;
 }
 
 // reset the ETag cache to avoid getting a Not Modified status
 // based on prior queries
 - (void)clearETaggedDataCache {
-  [[self fetchHistory] clearETaggedDataCache];
+  [self.fetchHistory clearETaggedDataCache];
 }
 
 - (void)clearHistory {
   [self clearETaggedDataCache];
-  [[self fetchHistory] removeAllCookies];
+  [self.fetchHistory removeAllCookies];
+}
+
+#pragma mark Accessors
+
+- (NSDictionary *)runningHosts {
+  return runningHosts_;
+}
+
+- (void)setRunningHosts:(NSDictionary *)dict {
+  [runningHosts_ autorelease];
+  runningHosts_ = [dict mutableCopy];
+}
+
+- (NSDictionary *)delayedHosts {
+  return delayedHosts_;
+}
+
+- (void)setDelayedHosts:(NSDictionary *)dict {
+  [delayedHosts_ autorelease];
+  delayedHosts_ = [dict mutableCopy];
 }
 
 @end

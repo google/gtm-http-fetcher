@@ -396,6 +396,7 @@ static NSString* const kGTMETagHeader = @"Etag";
 
 @synthesize cookieStorage = cookieStorage_;
 
+@dynamic shouldRememberETags;
 @dynamic shouldCacheETaggedData;
 @dynamic memoryCapacity;
 
@@ -409,6 +410,7 @@ static NSString* const kGTMETagHeader = @"Etag";
   self = [super init];
   if (self != nil) {
     etaggedDataCache_ = [[GTMURLCache alloc] initWithMemoryCapacity:totalBytes];
+    shouldRememberETags_ = YES;
     shouldCacheETaggedData_ = shouldCacheETaggedData;
     cookieStorage_ = [[GTMCookieStorage alloc] init];
   }
@@ -422,31 +424,33 @@ static NSString* const kGTMETagHeader = @"Etag";
 }
 
 - (void)updateRequest:(NSMutableURLRequest *)request isHTTPGet:(BOOL)isHTTPGet {
-  // If this URL is in the history, and no ETag has been set, then
-  // set the ETag header field
+  if ([self shouldRememberETags]) {
+    // If this URL is in the history, and no ETag has been set, then
+    // set the ETag header field
 
-  // if we have a history, we're tracking across fetches, so we don't
-  // want to pull results from any other cache
-  [request setCachePolicy:NSURLRequestReloadIgnoringCacheData];
+    // if we have a history, we're tracking across fetches, so we don't
+    // want to pull results from any other cache
+    [request setCachePolicy:NSURLRequestReloadIgnoringCacheData];
 
-  if (isHTTPGet) {
-    // we'll only add an ETag if there's no ETag specified in the user's
-    // request
-    NSString *specifiedETag = [request valueForHTTPHeaderField:kGTMIfNoneMatchHeader];
-    if (specifiedETag == nil) {
-      // no ETag: extract the previous ETag for this request from the
-      // fetch history, and add it to the request
-      NSString *cachedETag = [self cachedETagForRequest:request];
+    if (isHTTPGet) {
+      // we'll only add an ETag if there's no ETag specified in the user's
+      // request
+      NSString *specifiedETag = [request valueForHTTPHeaderField:kGTMIfNoneMatchHeader];
+      if (specifiedETag == nil) {
+        // no ETag: extract the previous ETag for this request from the
+        // fetch history, and add it to the request
+        NSString *cachedETag = [self cachedETagForRequest:request];
 
-      if (cachedETag != nil) {
-        [request addValue:cachedETag forHTTPHeaderField:kGTMIfNoneMatchHeader];
+        if (cachedETag != nil) {
+          [request addValue:cachedETag forHTTPHeaderField:kGTMIfNoneMatchHeader];
+        }
+      } else {
+        // has an ETag: remove any stored response in the fetch history
+        // for this request, as the If-None-Match header could lead to
+        // a 304 Not Modified, and we want that error delivered to the
+        // user since they explicitly specified the ETag
+        [self removeCachedDataForRequest:request];
       }
-    } else {
-      // has an ETag: remove any stored response in the fetch history
-      // for this request, as the If-None-Match header could lead to
-      // a 304 Not Modified, and we want that error delivered to the
-      // user since they explicitly specified the ETag
-      [self removeCachedDataForRequest:request];
     }
   }
 }
@@ -454,6 +458,7 @@ static NSString* const kGTMETagHeader = @"Etag";
 - (void)updateFetchHistoryWithRequest:(NSURLRequest *)request
                              response:(NSURLResponse *)response
                        downloadedData:(NSData *)downloadedData {
+  if (![self shouldRememberETags]) return;
 
   if (![response respondsToSelector:@selector(allHeaderFields)]) return;
 
@@ -532,6 +537,20 @@ static NSString* const kGTMETagHeader = @"Etag";
 
 - (void)removeAllCookies {
   [cookieStorage_ removeAllCookies];
+}
+
+- (BOOL)shouldRememberETags {
+  return shouldRememberETags_;
+}
+
+- (void)setShouldRememberETags:(BOOL)flag {
+  BOOL wasRemembering = shouldRememberETags_;
+  shouldRememberETags_ = flag;
+
+  if (wasRemembering && !flag) {
+    // free up the cache memory
+    [self clearETaggedDataCache];
+  }
 }
 
 - (BOOL)shouldCacheETaggedData {
