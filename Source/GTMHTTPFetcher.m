@@ -50,7 +50,7 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 - (void)failToBeginFetchWithError:(NSError *)error;
 
 - (BOOL)authorizeRequest;
-- (void)authorizer:(id)auth
+- (void)authorizer:(id <GTMFetcherAuthorizationProtocol>)auth
            request:(NSMutableURLRequest *)request
  finishedWithError:(NSError *)error;
 
@@ -430,7 +430,7 @@ CannotBeginFetch:
 }
 #endif
 
-- (NSString *)createTempDownloadFilePathForPath:targetPath {
+- (NSString *)createTempDownloadFilePathForPath:(NSString *)targetPath {
   NSString *tempDir = nil;
 
 #if (!TARGET_OS_IPHONE && (MAC_OS_X_VERSION_MAX_ALLOWED >= 1060)) || (TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 40000))
