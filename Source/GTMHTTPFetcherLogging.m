@@ -436,7 +436,7 @@ static NSString* gLoggingProcessName = nil;
   NSString *responseDataFormattedFileName = nil;
   NSUInteger responseDataLength;
   if (downloadFileHandle_) {
-    responseDataLength = [downloadFileHandle_ offsetInFile];
+    responseDataLength = (NSUInteger) [downloadFileHandle_ offsetInFile];
   } else {
     responseDataLength = [downloadedData_ length];
   }
