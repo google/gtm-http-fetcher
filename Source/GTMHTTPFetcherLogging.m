@@ -18,10 +18,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#ifdef GTL_TARGET_NAMESPACE
-  #import "GTLDefines.h"
-#endif
-
 #import "GTMHTTPFetcherLogging.h"
 
 // If GTMProgressMonitorInputStream is available, it can be used for

@@ -217,6 +217,8 @@
 #if defined(GTL_TARGET_NAMESPACE)
   // we're using target namespace macros
   #import "GTLDefines.h"
+#elif defined(GDATA_TARGET_NAMESPACE)
+  #import "GDataDefines.h"
 #else
   #if TARGET_OS_IPHONE
     #ifndef GTM_FOUNDATION_ONLY
