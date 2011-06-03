@@ -392,10 +392,10 @@ CannotBeginFetch:
   SEL asyncAuthSel = @selector(authorizeRequest:delegate:didFinishSelector:);
   if ([authorizer respondsToSelector:asyncAuthSel]) {
     SEL callbackSel = @selector(authorizer:request:finishedWithError:);
-    BOOL isAuthing = [authorizer authorizeRequest:request_
-                                         delegate:self
-                                didFinishSelector:callbackSel];
-    return isAuthing;
+    [authorizer authorizeRequest:request_
+                        delegate:self
+               didFinishSelector:callbackSel];
+    return YES;
   } else {
     NSAssert(authorizer == nil, @"invalid authorizer for fetch");
 

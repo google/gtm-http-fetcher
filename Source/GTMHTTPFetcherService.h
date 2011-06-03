@@ -81,7 +81,7 @@
 @property (retain) GTMHTTPFetchHistory *fetchHistory;
 
 @property (assign) NSInteger cookieStorageMethod;
-@property (assign) BOOL shouldRememberETags;      // default: YES
+@property (assign) BOOL shouldRememberETags;      // default: NO
 @property (assign) BOOL shouldCacheETaggedData;   // default: NO
 
 - (void)clearETaggedDataCache;

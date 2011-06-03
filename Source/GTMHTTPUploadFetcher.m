@@ -287,7 +287,14 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   NSInteger statusCode = [super statusCode];
   [self setStatusCode:statusCode];
 
-  if (statusCode >= 300) return;
+  if (statusCode >= 300) {
+    NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
+                                         code:statusCode
+                                     userInfo:nil];
+    [self invokeFinalCallbacksWithData:[self downloadedData]
+                                 error:error];
+    return;
+  }
 
 #if DEBUG
   // the initial response should have an empty body

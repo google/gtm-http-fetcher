@@ -410,7 +410,7 @@ static NSString* const kGTMETagHeader = @"Etag";
   self = [super init];
   if (self != nil) {
     etaggedDataCache_ = [[GTMURLCache alloc] initWithMemoryCapacity:totalBytes];
-    shouldRememberETags_ = YES;
+    shouldRememberETags_ = shouldCacheETaggedData;
     shouldCacheETaggedData_ = shouldCacheETaggedData;
     cookieStorage_ = [[GTMCookieStorage alloc] init];
   }
@@ -560,6 +560,10 @@ static NSString* const kGTMETagHeader = @"Etag";
 - (void)setShouldCacheETaggedData:(BOOL)flag {
   BOOL wasCaching = shouldCacheETaggedData_;
   shouldCacheETaggedData_ = flag;
+
+  if (flag) {
+    self.shouldRememberETags = YES;
+  }
 
   if (wasCaching && !flag) {
     // users expect turning off caching to free up the cache memory
