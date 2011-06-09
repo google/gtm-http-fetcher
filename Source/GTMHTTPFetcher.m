@@ -70,6 +70,8 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
                       error:(NSError *)error;
 - (void)releaseCallbacks;
 
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
+
 - (BOOL)shouldRetryNowForStatus:(NSInteger)status error:(NSError *)error;
 - (void)destroyRetryTimer;
 - (void)beginRetryTimer;

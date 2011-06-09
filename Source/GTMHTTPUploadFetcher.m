@@ -26,6 +26,7 @@ static NSUInteger const kQueryServerForOffset = NSUIntegerMax;
 
 @interface GTMHTTPFetcher (ProtectedMethods)
 - (void)releaseCallbacks;
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection;
 @end
 
 @interface GTMHTTPUploadFetcher ()
