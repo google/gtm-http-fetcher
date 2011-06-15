@@ -21,8 +21,6 @@
 
 #import "GTMHTTPFetcher.h"
 
-SEL const kUnifiedFailureCallback = (SEL) (void *) -1;
-
 static id <GTMCookieStorageProtocol> gGTMFetcherStaticCookieStorage = nil;
 static Class gGTMFetcherConnectionClass = nil;
 
