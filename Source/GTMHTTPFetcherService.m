@@ -168,7 +168,7 @@
 
 - (void)startFetcher:(GTMHTTPFetcher *)fetcher {
   NSThread *thread = [fetcher thread];
-  if (0 && [thread isEqual:[NSThread currentThread]]) {
+  if ([thread isEqual:[NSThread currentThread]]) {
     // Same thread
     [self startFetcherOnCurrentThread:fetcher];
   } else {
