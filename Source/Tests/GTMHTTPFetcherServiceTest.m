@@ -188,9 +188,60 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
     [fetcher waitForCompletionWithTimeout:10];
   }
 
-  STAssertEquals((NSUInteger) 0, [pending count], @"fetchers still pending");
-  STAssertEquals((NSUInteger) 0, [running count], @"fetchers still running");
+  STAssertEquals((NSUInteger) 0, [pending count], @"still pending: %@", pending);
+  STAssertEquals((NSUInteger) 0, [running count], @"still running: %@", running);
   STAssertEquals((NSUInteger) totalNumberOfFetchers, [completed count], @"incomplete");
+}
+
+- (void)testStopAllFetchers {
+  if (!isServerRunning_) return;
+
+  GTMHTTPFetcherService *service = [[[GTMHTTPFetcherService alloc] init] autorelease];
+  service.maxRunningFetchersPerHost = 2;
+  service.fetchHistory.shouldRememberETags = NO;
+
+  // Create three fetchers for each of two URLs, so there should be
+  // two running and one delayed for each
+  NSURL *validFileURL = [testServer_ localURLForFile:kValidFileName];
+
+  NSString *validURLStr = [validFileURL absoluteString];
+  NSString *altValidURLStr = [validURLStr stringByReplacingOccurrencesOfString:@"localhost"
+                                                                    withString:@"127.0.0.1"];
+  NSURL *altValidURL = [NSURL URLWithString:altValidURLStr];
+
+  // Add three fetches for each URL
+  NSMutableArray *urlArray = [NSMutableArray array];
+  [urlArray addObject:validFileURL];
+  [urlArray addObject:altValidURL];
+  [urlArray addObject:validFileURL];
+  [urlArray addObject:altValidURL];
+  [urlArray addObject:validFileURL];
+  [urlArray addObject:altValidURL];
+
+  // Create and start all the fetchers
+  for (NSURL *fileURL in urlArray) {
+    GTMHTTPFetcher *fetcher = [service fetcherWithURL:fileURL];
+    [fetcher beginFetchWithCompletionHandler:^(NSData *fetchData, NSError *fetchError) {
+      // We shouldn't reach any of the callbacks
+      STFail(@"Fetcher completed but should have been stopped");
+    }];
+  }
+
+  // Two hosts
+  STAssertEquals([service.runningHosts count], (NSUInteger)2, @"hosts running");
+  STAssertEquals([service.delayedHosts count], (NSUInteger)2, @"hosts delayed");
+
+  // We should see two fetchers running and one delayed for each host
+  NSArray *localhosts = [service.runningHosts objectForKey:@"localhost"];
+  STAssertEquals([localhosts count], (NSUInteger)2, @"hosts running");
+
+  localhosts = [service.delayedHosts objectForKey:@"localhost"];
+  STAssertEquals([localhosts count], (NSUInteger)1, @"hosts delayed");
+
+  [service stopAllFetchers];
+
+  STAssertEquals([service.runningHosts count], (NSUInteger)0, @"hosts running");
+  STAssertEquals([service.delayedHosts count], (NSUInteger)0, @"hosts delayed");
 }
 
 @end

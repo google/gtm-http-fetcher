@@ -246,22 +246,23 @@
 - (void)stopAllFetchers {
   // Remove fetchers from the delayed list to avoid fetcherDidStop: from
   // starting more fetchers running as a side effect of stopping one
-  NSDictionary *delayedHostsCopy = [[delayedHosts_ copy] autorelease];
+  NSArray *delayedForHosts = [delayedHosts_ allValues];
   [delayedHosts_ removeAllObjects];
 
-  for (NSArray *delayedForHost in delayedHostsCopy) {
+  for (NSArray *delayedForHost in delayedForHosts) {
     for (GTMHTTPFetcher *fetcher in delayedForHost) {
       [self stopFetcher:fetcher];
     }
   }
 
-  for (NSArray *runningForHost in runningHosts_) {
+  NSArray *runningForHosts = [runningHosts_ allValues];
+  [runningHosts_ removeAllObjects];
+
+  for (NSArray *runningForHost in runningForHosts) {
     for (GTMHTTPFetcher *fetcher in runningForHost) {
       [self stopFetcher:fetcher];
     }
   }
-
-  [runningHosts_ removeAllObjects];
 }
 
 #pragma mark Fetch History Settings
