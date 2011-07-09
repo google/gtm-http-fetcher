@@ -36,12 +36,9 @@
             credential = credential_,
             proxyCredential = proxyCredential_,
             cookieStorageMethod = cookieStorageMethod_,
+            shouldFetchInBackground = shouldFetchInBackground_,
             fetchHistory = fetchHistory_,
             authorizer = authorizer_;
-
-@dynamic delayedHosts,
-         runningHosts,
-         shouldCacheETaggedData;
 
 - (id)init {
   self = [super init];
@@ -78,6 +75,7 @@
   fetcher.cookieStorageMethod = self.cookieStorageMethod;
   fetcher.credential = self.credential;
   fetcher.proxyCredential = self.proxyCredential;
+  fetcher.shouldFetchInBackground = self.shouldFetchInBackground;
   fetcher.authorizer = self.authorizer;
   fetcher.service = self;
 

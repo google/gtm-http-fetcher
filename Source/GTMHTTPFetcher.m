@@ -21,6 +21,10 @@
 
 #import "GTMHTTPFetcher.h"
 
+#if GTM_BACKGROUND_FETCHING
+#import <UIKit/UIKit.h>
+#endif
+
 static id <GTMCookieStorageProtocol> gGTMFetcherStaticCookieStorage = nil;
 static Class gGTMFetcherConnectionClass = nil;
 
@@ -47,6 +51,11 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
               mayAuthorize:(BOOL)mayAuthorize;
 - (void)failToBeginFetchWithError:(NSError *)error;
 
+#if GTM_BACKGROUND_FETCHING
+- (void)endBackgroundTask;
+- (void)backgroundFetchExpired;
+#endif
+
 - (BOOL)authorizeRequest;
 - (void)authorizer:(id <GTMFetcherAuthorizationProtocol>)auth
            request:(NSMutableURLRequest *)request
@@ -62,6 +71,8 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
 - (void)logNowWithError:(NSError *)error;
 
+- (void)invokeFetchCallbacksWithData:(NSData *)data
+                               error:(NSError *)error;
 - (void)invokeFetchCallback:(SEL)sel
                      target:(id)target
                        data:(NSData *)data
@@ -114,8 +125,8 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 }
 
 - (id)initWithRequest:(NSURLRequest *)request {
-  if ((self = [super init]) != nil) {
-
+  self = [super init];
+  if (self) {
     request_ = [request mutableCopy];
 
     if (gGTMFetcherStaticCookieStorage != nil) {
@@ -342,6 +353,28 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
     self.downloadedData = [NSMutableData data];
   }
 
+#if GTM_BACKGROUND_FETCHING
+  backgroundTaskIdentifer_ = 0;  // UIBackgroundTaskInvalid is 0 on iOS 4
+  if (shouldFetchInBackground_) {
+    // For iOS 3 compatibility, ensure that UIApp supports backgrounding
+    UIApplication *app = [UIApplication sharedApplication];
+    if ([app respondsToSelector:@selector(beginBackgroundTaskWithExpirationHandler:)]) {
+      // Tell UIApplication that we want to continue even when the app is in the
+      // background
+      NSThread *thread = [NSThread currentThread];
+      backgroundTaskIdentifer_ = [app beginBackgroundTaskWithExpirationHandler:^{
+        // Callback - this block is always invoked by UIApplication on the main
+        // thread, but we want to run the user's callbacks on the thread used
+        // to start the fetch
+        [self performSelector:@selector(backgroundFetchExpired)
+                     onThread:thread
+                   withObject:nil
+                waitUntilDone:YES];
+      }];
+    }
+  }
+#endif
+
   // once connection_ is non-nil we can send the start notification
   isStopNotificationNeeded_ = YES;
   NSNotificationCenter *defaultNC = [NSNotificationCenter defaultCenter];
@@ -361,18 +394,10 @@ CannotBeginFetch:
                             userInfo:nil];
   }
 
-  [[self retain] autorelease]; // in case the callback releases us
+  [[self retain] autorelease];  // In case the callback releases us
 
-  [self invokeFetchCallback:finishedSel_
-                     target:delegate_
-                       data:nil
-                      error:error];
-
-#if NS_BLOCKS_AVAILABLE
-  if (completionBlock_) {
-    completionBlock_(nil, error);
-  }
-#endif
+  [self invokeFetchCallbacksWithData:nil
+                               error:error];
 
   [self releaseCallbacks];
 
@@ -386,6 +411,35 @@ CannotBeginFetch:
     self.temporaryDownloadPath = nil;
   }
 }
+
+#if GTM_BACKGROUND_FETCHING
+- (void)backgroundFetchExpired {
+  // On background expiration, we stop the fetch and invoke the callbacks
+  NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherErrorDomain
+                                       code:kGTMHTTPFetcherErrorBackgroundExpiration
+                                   userInfo:nil];
+  [self invokeFetchCallbacksWithData:nil
+                               error:error];
+
+  // Stopping the fetch here will indirectly call endBackgroundTask
+  [self stopFetchReleasingCallbacks:NO];
+
+  [self releaseCallbacks];
+  self.authorizer = nil;
+}
+
+- (void)endBackgroundTask {
+  // Whenever the connection stops or background execution expires,
+  // we need to tell UIApplication we're done
+  if (backgroundTaskIdentifer_) {
+    // If backgroundTaskIdentifer_ is non-zero, we know we're on iOS 4
+    UIApplication *app = [UIApplication sharedApplication];
+    [app endBackgroundTask:backgroundTaskIdentifer_];
+
+    backgroundTaskIdentifer_ = 0;
+  }
+}
+#endif
 
 - (BOOL)authorizeRequest {
   id authorizer = self.authorizer;
@@ -570,6 +624,10 @@ CannotBeginFetch:
                                                error:NULL];
     self.temporaryDownloadPath = nil;
   }
+
+#if GTM_BACKGROUND_FETCHING
+  [self endBackgroundTask];
+#endif
 }
 
 // external stop method
@@ -788,10 +846,28 @@ CannotBeginFetch:
   [self connection:connection didFailWithError:error];
 }
 
+- (void)invokeFetchCallbacksWithData:(NSData *)data
+                               error:(NSError *)error {
+  [[self retain] autorelease];  // In case the callback releases us
+
+  [self invokeFetchCallback:finishedSel_
+                     target:delegate_
+                       data:data
+                      error:error];
+
+#if NS_BLOCKS_AVAILABLE
+  if (completionBlock_) {
+    completionBlock_(data, error);
+  }
+#endif
+}
+
 - (void)invokeFetchCallback:(SEL)sel
                      target:(id)target
                        data:(NSData *)data
                       error:(NSError *)error {
+  // This method is available to subclasses which may provide a customized
+  // target pointer
   if (target && sel) {
     NSMethodSignature *sig = [target methodSignatureForSelector:sel];
     NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
@@ -1009,16 +1085,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
   if (shouldStopFetching) {
     // call the callbacks
-    [self invokeFetchCallback:finishedSel_
-                       target:delegate_
-                         data:downloadedData_
-                        error:error];
-
-#if NS_BLOCKS_AVAILABLE
-    if (completionBlock_) {
-      completionBlock_(downloadedData_, error);
-    }
-#endif
+    [self invokeFetchCallbacksWithData:downloadedData_
+                                 error:error];
 
     BOOL shouldRelease = [self shouldReleaseCallbacksUponCompletion];
     [self stopFetchReleasingCallbacks:shouldRelease];
@@ -1058,16 +1126,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
     [[self retain] autorelease]; // in case the callback releases us
 
-    [self invokeFetchCallback:finishedSel_
-                       target:delegate_
-                         data:nil
-                        error:error];
-
-#if NS_BLOCKS_AVAILABLE
-    if (completionBlock_) {
-      completionBlock_(nil, error);
-    }
-#endif
+    [self invokeFetchCallbacksWithData:nil
+                                 error:error];
 
     [self stopFetchReleasingCallbacks:YES];
   }
@@ -1308,6 +1368,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
             receivedDataBlock = receivedDataBlock_,
             retryBlock = retryBlock_;
 #endif
+
+@synthesize shouldFetchInBackground = shouldFetchInBackground_;
 
 - (NSInteger)cookieStorageMethod {
   return cookieStorageMethod_;

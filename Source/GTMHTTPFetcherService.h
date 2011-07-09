@@ -47,6 +47,8 @@
   NSURLCredential *proxyCredential_;  // credential supplied to proxy servers
   NSInteger cookieStorageMethod_;
 
+  BOOL shouldFetchInBackground_;
+
   id <GTMFetcherAuthorizationProtocol> authorizer_;
 }
 
@@ -76,6 +78,7 @@
 @property (retain) NSArray *runLoopModes;
 @property (retain) NSURLCredential *credential;
 @property (retain) NSURLCredential *proxyCredential;
+@property (assign) BOOL shouldFetchInBackground;
 
 // Fetch history
 @property (retain) GTMHTTPFetchHistory *fetchHistory;

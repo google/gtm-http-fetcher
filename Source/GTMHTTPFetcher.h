@@ -230,6 +230,9 @@
   #endif
 #endif
 
+#if TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 40000)
+  #define GTM_BACKGROUND_FETCHING 1
+#endif
 
 #undef _EXTERN
 #undef _INITIALIZE_AS
@@ -264,6 +267,7 @@ enum {
   kGTMHTTPFetcherErrorAuthenticationChallengeFailed = -2,
   kGTMHTTPFetcherErrorChunkUploadFailed = -3,
   kGTMHTTPFetcherErrorFileHandleException = -4,
+  kGTMHTTPFetcherErrorBackgroundExpiration = -6,
 
   // The code kGTMHTTPFetcherErrorAuthorizationFailed (-5) has been removed;
   // look for status 401 instead.
@@ -373,6 +377,10 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
   BOOL hasConnectionEnded_;         // set if the connection need not be cancelled
   BOOL isCancellingChallenge_;      // set only when cancelling an auth challenge
   BOOL isStopNotificationNeeded_;   // set when start notification has been sent
+  BOOL shouldFetchInBackground_;
+#if GTM_BACKGROUND_FETCHING
+  NSUInteger backgroundTaskIdentifer_; // UIBackgroundTaskIdentifier
+#endif
   id userData_;                     // retained, if set by caller
   NSMutableDictionary *properties_; // more data retained for caller
   NSArray *runLoopModes_;           // optional, for 10.5 and later
@@ -457,6 +465,15 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 
 // The delegate is retained during the connection
 @property (retain) id delegate;
+
+// On iOS 4 and later, the fetch may optionally continue while the app is in the
+// background until finished or stopped by OS expiration
+//
+// The default value is NO
+//
+// For Mac OS X, background fetches are always supported, and this property
+// is ignored
+@property (assign) BOOL shouldFetchInBackground;
 
 // The delegate's optional sentData selector may be used to monitor upload
 // progress. It should have a signature like:

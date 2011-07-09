@@ -3,9 +3,14 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
+8-July-2011
+
+Added shouldFetchInBackground property (thanks justin a)
+
+
 24-Mar-2011
 
-Add authorizer support
+Added authorizer support
 
 
 7-Feb-2011
