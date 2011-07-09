@@ -164,38 +164,37 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
   // Note: if a connection or a retry timer was pending, then this instance
   // would be retained by those so it wouldn't be getting dealloc'd,
   // hence we don't need to stopFetch here
+  [request_ release];
   [connection_ release];
+  [downloadedData_ release];
+  [downloadPath_ release];
+  [temporaryDownloadPath_ release];
+  [downloadFileHandle_ release];
+  [credential_ release];
+  [proxyCredential_ release];
+  [postData_ release];
+  [postStream_ release];
   [loggedStreamData_ release];
-  [retryTimer_ invalidate];
-  [retryTimer_ release];
-  
-  self.mutableRequest = nil;
-  self.downloadedData = nil;
-  self.downloadPath = nil;
-  self.temporaryDownloadPath = nil;
-  self.downloadFileHandle = nil;
-  self.credential = nil;
-  self.proxyCredential = nil;
-  self.postData = nil;
-  self.postStream = nil;
-  self.authorizer = nil;
-  self.service = nil;
-  self.serviceHost = nil;
-  self.thread = nil;
-  self.response = nil;
-  self.userData = nil;
-  self.properties = nil;
-  self.runLoopModes = nil;
-  self.fetchHistory = nil;
-  self.cookieStorage = nil;
-  self.comment = nil;
+  [response_ release];
 #if NS_BLOCKS_AVAILABLE
-  self.completionBlock = nil;
-  self.receivedDataBlock = nil;
-  self.sentDataBlock = nil;
-  self.retryBlock = nil;
+  [completionBlock_ release];
+  [receivedDataBlock_ release];
+  [sentDataBlock_ release];
+  [retryBlock_ release];
 #endif
-  
+  [userData_ release];
+  [properties_ release];
+  [runLoopModes_ release];
+  [fetchHistory_ release];
+  [cookieStorage_ release];
+  [authorizer_ release];
+  [service_ release];
+  [serviceHost_ release];
+  [thread_ release];
+  [retryTimer_ release];
+  [comment_ release];
+  [log_ release];
+
   [super dealloc];
 }
 

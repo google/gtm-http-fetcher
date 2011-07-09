@@ -55,13 +55,14 @@
 }
 
 - (void)dealloc {
-  self.delayedHosts = nil;
-  self.runningHosts = nil;
-  self.fetchHistory = nil;
-  self.runLoopModes = nil;
-  self.credential = nil;
-  self.proxyCredential = nil;
-  self.authorizer = nil;
+  [delayedHosts_ release];
+  [runningHosts_ release];
+  [fetchHistory_ release];
+  [runLoopModes_ release];
+  [credential_ release];
+  [proxyCredential_ release];
+  [authorizer_ release];
+
   [super dealloc];
 }
 
