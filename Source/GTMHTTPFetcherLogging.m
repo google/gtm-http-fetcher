@@ -1015,6 +1015,11 @@ static NSString* gLoggingProcessName = nil;
       value = [[self class] snipSubtringOfString:value
                               betweenStartString:@"OAuth "
                                        endString:@"\n"];
+
+      // remove Google ClientLogin
+      value = [[self class] snipSubtringOfString:value
+                              betweenStartString:@"GoogleLogin auth="
+                                       endString:@"\n"];
     }
     if (shouldAlignColons) {
       [str appendFormat:@"%*s: %@\n", maxKeyLen, [key UTF8String], value];

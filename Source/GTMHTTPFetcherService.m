@@ -37,8 +37,7 @@
             proxyCredential = proxyCredential_,
             cookieStorageMethod = cookieStorageMethod_,
             shouldFetchInBackground = shouldFetchInBackground_,
-            fetchHistory = fetchHistory_,
-            authorizer = authorizer_;
+            fetchHistory = fetchHistory_;
 
 - (id)init {
   self = [super init];
@@ -321,6 +320,21 @@
 - (void)setDelayedHosts:(NSDictionary *)dict {
   [delayedHosts_ autorelease];
   delayedHosts_ = [dict mutableCopy];
+}
+
+- (id <GTMFetcherAuthorizationProtocol>)authorizer {
+  return authorizer_;
+}
+
+- (void)setAuthorizer:(id <GTMFetcherAuthorizationProtocol>)obj {
+  [authorizer_ autorelease];
+  authorizer_ = [obj retain];
+
+  // Use the fetcher service for the authorization fetches if the auth
+  // object supports fetcher services
+  if ([authorizer_ respondsToSelector:@selector(setFetcherService:)]) {
+    [authorizer_ setFetcherService:self];
+  }
 }
 
 @end

@@ -315,6 +315,15 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 - (void)removeCachedDataForRequest:(NSURLRequest *)request;
 @end
 
+@protocol GTMHTTPFetcherServiceProtocol <NSObject>
+// This protocol allows us to call into the service without requiring
+// GTMHTTPFetcherService sources in this project
+- (BOOL)fetcherShouldBeginFetching:(GTMHTTPFetcher *)fetcher;
+- (void)fetcherDidStop:(GTMHTTPFetcher *)fetcher;
+
+- (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
+@end
+
 @protocol GTMFetcherAuthorizationProtocol <NSObject>
 @required
 // This protocol allows us to call the authorizer without requiring its sources
@@ -328,15 +337,9 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 - (BOOL)isAuthorizedRequest:(NSURLRequest *)request;
 
 - (NSString *)userEmail;
-@end
 
-@protocol GTMHTTPFetcherServiceProtocol <NSObject>
-// This protocol allows us to call into the service without requiring
-// GTMHTTPFetcherService sources in this project
-- (BOOL)fetcherShouldBeginFetching:(GTMHTTPFetcher *)fetcher;
-- (void)fetcherDidStop:(GTMHTTPFetcher *)fetcher;
-
-- (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
+@optional
+@property (assign) __weak id <GTMHTTPFetcherServiceProtocol> fetcherService;
 @end
 
 // GTMHTTPFetcher objects are used for async retrieval of an http get or post
