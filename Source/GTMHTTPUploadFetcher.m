@@ -17,8 +17,8 @@
 //  GTMHTTPUploadFetcher.m
 //
 
-#if (!GDATA_REQUIRE_SERVICE_INCLUDES && !GTL_REQUIRE_SERVICE_INCLUDES) \
-  || GDATA_INCLUDE_DOCS_SERVICE || GDATA_INCLUDE_YOUTUBE_SERVICE || GDATA_INCLUDE_PHOTOS_SERVICE
+#if (!GDATA_REQUIRE_SERVICE_INCLUDES) || GDATA_INCLUDE_DOCS_SERVICE || \
+  GDATA_INCLUDE_YOUTUBE_SERVICE || GDATA_INCLUDE_PHOTOS_SERVICE
 
 #import "GTMHTTPUploadFetcher.h"
 
@@ -116,23 +116,22 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
     [self setUploadMIMEType:uploadMIMEType];
     [self setChunkSize:chunkSize];
 
-    // add our custom headers to the initial request indicating the data
-    // type and total size to be delivered later in the chunk requests
-    NSMutableURLRequest *mutableReq = [self mutableRequest];
-
-    NSString *lengthStr = [NSString stringWithFormat:@"%lu",
-                           (unsigned long) [data length]];
-    [mutableReq setValue:lengthStr
-      forHTTPHeaderField:@"X-Upload-Content-Length"];
-
-    [mutableReq setValue:uploadMIMEType
-      forHTTPHeaderField:@"X-Upload-Content-Type"];
+    // indicate that we've not yet determined the file handle's length
+    uploadFileHandleLength_ = -1;
 
     // indicate that we've not yet determined the upload fetcher status
     statusCode_ = -1;
 
-    // indicate that we've not yet determined the file handle's length
-    uploadFileHandleLength_ = -1;
+    // add our custom headers to the initial request indicating the data
+    // type and total size to be delivered later in the chunk requests
+    NSMutableURLRequest *mutableReq = [self mutableRequest];
+
+    NSNumber *lengthNum = [NSNumber numberWithUnsignedInteger:[self fullUploadLength]];
+    [mutableReq setValue:[lengthNum stringValue]
+      forHTTPHeaderField:@"X-Upload-Content-Length"];
+
+    [mutableReq setValue:uploadMIMEType
+      forHTTPHeaderField:@"X-Upload-Content-Type"];
   }
   return self;
 }
@@ -788,4 +787,4 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
 
 @end
 
-#endif // #if (!GDATA_REQUIRE_SERVICE_INCLUDES && !GTL_REQUIRE_SERVICE_INCLUDES)
+#endif // #if !GDATA_REQUIRE_SERVICE_INCLUDES
