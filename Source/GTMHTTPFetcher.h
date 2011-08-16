@@ -339,7 +339,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 - (NSString *)userEmail;
 
 @optional
-@property (assign) __weak id <GTMHTTPFetcherServiceProtocol> fetcherService;
+@property (assign) id <GTMHTTPFetcherServiceProtocol> fetcherService; // WEAK
 @end
 
 // GTMHTTPFetcher objects are used for async retrieval of an http get or post
