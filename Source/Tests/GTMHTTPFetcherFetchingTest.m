@@ -290,7 +290,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   }
 
   STAssertNotNil(fetcherError_, @"failed to receive fetching error");
-  STAssertEquals(fetchedStatus_, (NSInteger) 0,
+  STAssertEquals(fetchedStatus_, (int) 0,
                  @"unexpected status from no response");
 
   // fetch with a specific status code from our http server
@@ -431,7 +431,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
 
   [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
     STAssertNil(data, @"%@: unexpected data", testName);
-    STAssertEquals([error code], 400,
+    STAssertEquals([error code], (NSInteger) 400,
                    @"%@: unexpected error: %@", testName, error);
     hasFinishedFetching = YES;
   }];
@@ -484,7 +484,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertNotNil(fetchedData_, @"error data is expected");
   STAssertEquals(fetchedStatus_, 503,
                  @"fetchedStatus_ should be 503, was %@", fetchedStatus_);
-  STAssertEquals([fetcher retryCount], (unsigned) 3, @"retry count unexpected");
+  STAssertEquals([fetcher retryCount], (NSUInteger) 3, @"retry count unexpected");
 
   //
   // test:  retry twice, then give up
@@ -503,7 +503,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertNotNil(fetchedData_, @"error data is expected");
   STAssertEquals(fetchedStatus_, 503,
                  @"fetchedStatus_ should be 503, was %@", fetchedStatus_);
-  STAssertEquals([fetcher retryCount], (unsigned) 2, @"retry count unexpected");
+  STAssertEquals([fetcher retryCount], (NSUInteger) 2, @"retry count unexpected");
 
 
   //
@@ -522,7 +522,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertNotNil(fetchedData_, @"data is expected");
   STAssertEquals(fetchedStatus_, 200,
                  @"fetchedStatus_ should be 200, was %@", fetchedStatus_);
-  STAssertEquals([fetcher retryCount], (unsigned) 1, @"retry count unexpected");
+  STAssertEquals([fetcher retryCount], (NSUInteger) 1, @"retry count unexpected");
 
   // check the notifications
   STAssertEquals(fetchStartedNotificationCount_, 9, @"fetches started");
