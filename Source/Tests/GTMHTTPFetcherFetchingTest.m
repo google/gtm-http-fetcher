@@ -290,7 +290,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   }
 
   STAssertNotNil(fetcherError_, @"failed to receive fetching error");
-  STAssertEquals(fetchedStatus_, (int) 0,
+  STAssertEquals(fetchedStatus_, 0,
                  @"unexpected status from no response");
 
   // fetch with a specific status code from our http server

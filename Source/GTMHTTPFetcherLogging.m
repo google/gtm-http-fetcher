@@ -20,18 +20,16 @@
 
 #import "GTMHTTPFetcherLogging.h"
 
-// If GTMProgressMonitorInputStream is available, it can be used for
+// If GTMReadMonitorInputStream is available, it can be used for
 // capturing uploaded streams of data
 //
-// We locally declare some methods of GTMProgressMonitorInputStream so we
+// We locally declare methods of GTMReadMonitorInputStream so we
 // do not need to import the header, as some projects may not have it available
-@interface GTMProgressMonitorInputStream : NSInputStream
-+ (id)inputStreamWithStream:(NSInputStream *)input
-                     length:(unsigned long long)length;
-- (void)setMonitorDelegate:(id)monitorDelegate;
-- (void)setMonitorSelector:(SEL)monitorSelector;
-- (void)setReadSelector:(SEL)readSelector;
-- (void)setRunLoopModes:(NSArray *)modes;
+@interface GTMReadMonitorInputStream : NSInputStream
++ (id)inputStreamWithStream:(NSInputStream *)input;
+@property (assign) id readDelegate;
+@property (assign) SEL readSelector;
+@property (retain) NSArray *runLoopModes;
 @end
 
 // If GTMNSJSONSerialization is available, it is used for formatting JSON
@@ -47,13 +45,13 @@
 - (id)objectWithString:(NSString*)jsonrep error:(NSError**)error;
 @end
 
-@interface GTMHTTPFetcher (GTMHTTPFetcherLoggingInternal)
+@interface GTMHTTPFetcher ()
 + (NSString *)headersStringForDictionary:(NSDictionary *)dict
                              alignColons:(BOOL)shouldAlignColons;
 
-- (void)inputStream:(GTMProgressMonitorInputStream *)stream
+- (void)inputStream:(GTMReadMonitorInputStream *)stream
      readIntoBuffer:(void *)buffer
-             length:(unsigned long long)length;
+             length:(NSUInteger)length;
 
 // internal file utilities for logging
 + (BOOL)fileOrDirExistsAtPath:(NSString *)path;
@@ -279,7 +277,7 @@ static NSString* gLoggingProcessName = nil;
     BOOL didCapture = [self logCapturePostStream];
     if (!didCapture) {
       // upload stream logging requires the class
-      // GTMProgressMonitorInputStream be available
+      // GTMReadMonitorInputStream be available
       NSString const *str = @"<<Uploaded stream data logging unavailable>>";
       [loggedStreamData_ setData:[str dataUsingEncoding:NSUTF8StringEncoding]];
     }
@@ -879,34 +877,32 @@ static NSString* gLoggingProcessName = nil;
   // verified that logging is enabled, and should have allocated
   // loggedStreamData_ as a mutable object.
 
-  // if the class GTMProgressMonitorInputStream is not available, bail now
-  Class monitorClass = NSClassFromString(@"GTMProgressMonitorInputStream");
+  // If the class GTMReadMonitorInputStream is not available, bail now, since
+  // we cannot capture this upload stream
+  Class monitorClass = NSClassFromString(@"GTMReadMonitorInputStream");
   if (!monitorClass) return NO;
 
   // If we're logging, we need to wrap the upload stream with our monitor
   // stream that will call us back with the bytes being read from the stream
 
-  // our wrapper will retain the old post stream
+  // Our wrapper will retain the old post stream
   [postStream_ autorelease];
 
-  postStream_ = [monitorClass inputStreamWithStream:postStream_
-                                             length:0];
+  postStream_ = [monitorClass inputStreamWithStream:postStream_];
   [postStream_ retain];
-
-  [(GTMProgressMonitorInputStream *)postStream_ setMonitorDelegate:self];
-  [(GTMProgressMonitorInputStream *)postStream_ setRunLoopModes:[self runLoopModes]];
+  
+  [(GTMReadMonitorInputStream *)postStream_ setReadDelegate:self];
+  [(GTMReadMonitorInputStream *)postStream_ setRunLoopModes:[self runLoopModes]];
 
   SEL readSel = @selector(inputStream:readIntoBuffer:length:);
-  [(GTMProgressMonitorInputStream *)postStream_ setReadSelector:readSel];
+  [(GTMReadMonitorInputStream *)postStream_ setReadSelector:readSel];
 
-  // we don't really want monitoring callbacks
-  [(GTMProgressMonitorInputStream *)postStream_ setMonitorSelector:NULL];
   return YES;
 }
 
-- (void)inputStream:(GTMProgressMonitorInputStream *)stream
+- (void)inputStream:(GTMReadMonitorInputStream *)stream
      readIntoBuffer:(void *)buffer
-             length:(unsigned long long)length {
+             length:(NSUInteger)length {
   // append the captured data
   [loggedStreamData_ appendBytes:buffer length:length];
 }

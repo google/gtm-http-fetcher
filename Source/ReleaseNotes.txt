@@ -3,6 +3,11 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
+18-August-2011
+
+Added GTMReadMonitorInputStream for logging uploaded NSInputStreams
+
+
 8-July-2011
 
 Added shouldFetchInBackground property (thanks justin a)

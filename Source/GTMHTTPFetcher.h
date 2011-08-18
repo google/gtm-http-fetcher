@@ -647,6 +647,9 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 // Spin the run loop, discarding events, until the fetch has completed
 //
 // This is only for use in testing or in tools without a user interface.
+//
+// Synchronous fetches should never be done by shipping apps; they are
+// sufficient reason for rejection from the app store.
 - (void)waitForCompletionWithTimeout:(NSTimeInterval)timeoutInSeconds;
 
 #if STRIP_GTM_FETCH_LOGGING
