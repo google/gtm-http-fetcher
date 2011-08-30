@@ -407,7 +407,7 @@ static NSString* gLoggingProcessName = nil;
   int responseCounter = ++zResponseCounter;
 
   // file name for an image data file
-  NSString *responseImageFileName = nil;
+  NSString *responseDataFileName = nil;
   NSUInteger responseDataLength;
   if (downloadFileHandle_) {
     responseDataLength = (NSUInteger) [downloadFileHandle_ offsetInFile];
@@ -424,6 +424,10 @@ static NSString* gLoggingProcessName = nil;
 
   // if there's response data, decide what kind of file to put it in based
   // on the first bytes of the file or on the mime type supplied by the server
+  NSString *responseMIMEType = [response MIMEType];
+  BOOL isResponseImage = NO;
+  NSData *dataToWrite = nil;
+
   if (responseDataLength > 0) {
     NSString *responseDataExtn = nil;
 
@@ -437,29 +441,40 @@ static NSString* gLoggingProcessName = nil;
                                                JSON:&responseJSON];
     if (responseDataStr) {
       // we were able to make a UTF-8 string from the response data
-    } else if ([[response MIMEType] isEqual:@"image/jpeg"]) {
+      if ([responseMIMEType isEqual:@"application/atom+xml"]
+          || [responseMIMEType hasSuffix:@"/xml"]) {
+        responseDataExtn = @"xml";
+        dataToWrite = [responseDataStr dataUsingEncoding:NSUTF8StringEncoding];
+      }
+    } else if ([responseMIMEType isEqual:@"image/jpeg"]) {
       responseDataExtn = @"jpg";
-    } else if ([[response MIMEType] isEqual:@"image/gif"]) {
+      dataToWrite = downloadedData_;
+      isResponseImage = YES;
+    } else if ([responseMIMEType isEqual:@"image/gif"]) {
       responseDataExtn = @"gif";
-    } else if ([[response MIMEType] isEqual:@"image/png"]) {
+      dataToWrite = downloadedData_;
+      isResponseImage = YES;
+    } else if ([responseMIMEType isEqual:@"image/png"]) {
       responseDataExtn = @"png";
+      dataToWrite = downloadedData_;
+      isResponseImage = YES;
     } else {
      // add more non-text types here
     }
 
     // if we have an extension, save the raw data in a file with that
     // extension
-    if (responseDataExtn && downloadedData_) {
-      responseImageFileName = [responseBaseName stringByAppendingPathExtension:responseDataExtn];
-      NSString *imageFilePath = [logDirectory stringByAppendingPathComponent:responseImageFileName];
+    if (responseDataExtn && dataToWrite) {
+      responseDataFileName = [responseBaseName stringByAppendingPathExtension:responseDataExtn];
+      NSString *responseDataFilePath = [logDirectory stringByAppendingPathComponent:responseDataFileName];
 
       NSError *downloadedError = nil;
       if (gIsLoggingToFile
-          && ![downloadedData_ writeToFile:imageFilePath
-                                   options:0
-                                     error:&downloadedError]) {
+          && ![dataToWrite writeToFile:responseDataFilePath
+                               options:0
+                                 error:&downloadedError]) {
             NSLog(@"%@ logging write error:%@ (%@)",
-                  [self class], downloadedError, responseImageFileName);
+                  [self class], downloadedError, responseDataFileName);
           }
     }
   }
@@ -649,23 +664,32 @@ static NSString* gLoggingProcessName = nil;
   if (error) {
     [outputHTML appendFormat:@"<b>Error:</b> %@ <br>\n", [error description]];
   }
-
+  
   // Write the response data
-  if (responseImageFileName) {
-    // Make a small inline image that links to the full image file
-    NSString *escapedResponseFile = [responseImageFileName stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
-    [outputHTML appendFormat:@"&nbsp;&nbsp; data: %d bytes, <code>%@</code><br>",
-     (int)responseDataLength, [response MIMEType]];
-    NSString *imgFormat = @"<a href=\"%@\"><img src='%@' alt='image'"
-      " style='border:solid thin;max-height:32'></a>\n";
-    [outputHTML appendFormat:imgFormat,
-     escapedResponseFile, escapedResponseFile];
+  if (responseDataFileName) {
+    NSString *escapedResponseFile = [responseDataFileName stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    if (isResponseImage) {
+      // Make a small inline image that links to the full image file
+      [outputHTML appendFormat:@"&nbsp;&nbsp; data: %d bytes, <code>%@</code><br>",
+       (int)responseDataLength, responseMIMEType];
+      NSString *fmt = @"<a href=\"%@\"><img src='%@' alt='image'"
+        " style='border:solid thin;max-height:32'></a>\n";
+      [outputHTML appendFormat:fmt,
+       escapedResponseFile, escapedResponseFile];
+    } else {
+      // The response data was XML; link to the xml file
+      NSString *fmt = @"&nbsp;&nbsp; data: %d bytes, <code>"
+        "%@</code>&nbsp;&nbsp;&nbsp;<i><a href=\"%@\">%@</a></i>\n";
+      [outputHTML appendFormat:fmt,
+       (int)responseDataLength, responseMIMEType,
+       escapedResponseFile, [escapedResponseFile pathExtension]];
+    }
   } else {
     // The response data was not an image; just show the length and MIME type
     [outputHTML appendFormat:@"&nbsp;&nbsp; data: %d bytes, <code>%@</code>\n",
-      (int)responseDataLength, [response MIMEType]];
+     (int)responseDataLength, responseMIMEType];
   }
-
+  
   // Make a single string of the request and response, suitable for copying
   // to the clipboard and pasting into a bug report
   NSMutableString *copyable = [NSMutableString string];
