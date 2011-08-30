@@ -246,14 +246,6 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
     }
   }
 
-  if (mayAuthorize && authorizer_) {
-    BOOL isAuthorized = [authorizer_ isAuthorizedRequest:request_];
-    if (!isAuthorized) {
-      // authorization needed
-      return [self authorizeRequest];
-    }
-  }
-
   NSString *effectiveHTTPMethod = [request_ valueForHTTPHeaderField:@"X-HTTP-Method-Override"];
   if (effectiveHTTPMethod == nil) {
     effectiveHTTPMethod = [request_ HTTPMethod];
@@ -275,6 +267,16 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
       }
 
       [request_ setHTTPBodyStream:postStream_];
+    }
+  }
+
+  // We authorize after setting up the http method and body in the request
+  // because OAuth 1 may need to sign the request body
+  if (mayAuthorize && authorizer_) {
+    BOOL isAuthorized = [authorizer_ isAuthorizedRequest:request_];
+    if (!isAuthorized) {
+      // authorization needed
+      return [self authorizeRequest];
     }
   }
 

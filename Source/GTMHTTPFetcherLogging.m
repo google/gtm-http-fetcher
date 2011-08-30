@@ -269,7 +269,9 @@ static NSString* gLoggingProcessName = nil;
   // if logging is enabled, it needs a buffer to accumulate data from any
   // NSInputStream used for uploading.  Logging will wrap the input
   // stream with a stream that lets us keep a copy the data being read.
-  if ([GTMHTTPFetcher isLoggingEnabled] && postStream_ != nil) {
+  if ([GTMHTTPFetcher isLoggingEnabled]
+      && loggedStreamData_ == nil
+      && postStream_ != nil) {
     loggedStreamData_ = [[NSMutableData alloc] init];
 
     BOOL didCapture = [self logCapturePostStream];
