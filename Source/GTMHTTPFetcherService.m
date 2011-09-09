@@ -27,6 +27,8 @@
 @interface GTMHTTPFetcherService ()
 @property (retain, readwrite) NSDictionary *delayedHosts;
 @property (retain, readwrite) NSDictionary *runningHosts;
+
+- (void)detachAuthorizer;
 @end
 
 @implementation GTMHTTPFetcherService
@@ -54,6 +56,8 @@
 }
 
 - (void)dealloc {
+  [self detachAuthorizer];
+
   [delayedHosts_ release];
   [runningHosts_ release];
   [fetchHistory_ release];
@@ -327,6 +331,10 @@
 }
 
 - (void)setAuthorizer:(id <GTMFetcherAuthorizationProtocol>)obj {
+  if (obj != authorizer_) {
+    [self detachAuthorizer];
+  }
+
   [authorizer_ autorelease];
   authorizer_ = [obj retain];
 
@@ -334,6 +342,25 @@
   // object supports fetcher services
   if ([authorizer_ respondsToSelector:@selector(setFetcherService:)]) {
     [authorizer_ setFetcherService:self];
+  }
+}
+
+- (void)detachAuthorizer {
+  // This method is called by the fetcher service's dealloc and setAuthorizer:
+  // methods; do not override.
+  //
+  // The fetcher service retains the authorizer, and the authorizer has a
+  // weak pointer to the fetcher service (a non-zeroing pointer for
+  // compatibility with iOS 4 and Mac OS X 10.5/10.6.)
+  //
+  // When this fetcher service no longer uses the authorizer, we want to remove
+  // the authorizer's dependence on the fetcher service.  Authorizers can still
+  // function without a fetcher service.
+  if ([authorizer_ respondsToSelector:@selector(fetcherService)]) {
+    GTMHTTPFetcherService *authFS = [authorizer_ fetcherService];
+    if (authFS == self) {
+      [authorizer_ setFetcherService:nil];
+    }
   }
 }
 
