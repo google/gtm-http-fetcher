@@ -56,7 +56,16 @@
   NSUInteger initialBodySent_;
 
   NSURL *locationURL_;
-
+#if NS_BLOCKS_AVAILABLE
+  void (^locationChangeBlock_)(NSURL *);
+#elif !__LP64__
+  // placeholders: for 32-bit builds, keep the size of the object's ivar section
+  // the same with and without blocks
+#ifndef __clang_analyzer__
+  id locationChangePlaceholder_;
+#endif
+#endif
+  
   // uploadData_ or uploadFileHandle_ may be set, but not both
   NSData *uploadData_;
   NSFileHandle *uploadFileHandle_;
@@ -64,6 +73,7 @@
   NSString *uploadMIMEType_;
   NSUInteger chunkSize_;
   BOOL isPaused_;
+  BOOL isRestartedUpload_;
 
   // we keep the latest offset into the upload data just for
   // progress reporting
@@ -85,12 +95,10 @@
                                       uploadMIMEType:(NSString *)uploadMIMEType
                                            chunkSize:(NSUInteger)chunkSize;
 
-- (id)initWithRequest:(NSURLRequest *)request
-           uploadData:(NSData *)data
-     uploadFileHandle:(NSFileHandle *)fileHandle
-       uploadMIMEType:(NSString *)uploadMIMEType
-            chunkSize:(NSUInteger)chunkSize;
-
++ (GTMHTTPUploadFetcher *)uploadFetcherWithLocation:(NSURL *)locationURL
+                                   uploadFileHandle:(NSFileHandle *)fileHandle
+                                     uploadMIMEType:(NSString *)uploadMIMEType
+                                          chunkSize:(NSUInteger)chunkSize;
 - (void)pauseFetching;
 - (void)resumeFetching;
 - (BOOL)isPaused;
@@ -101,6 +109,13 @@
 @property (copy) NSString *uploadMIMEType;
 @property (assign) NSUInteger chunkSize;
 @property (assign) NSUInteger currentOffset;
+
+#if NS_BLOCKS_AVAILABLE
+// When the upload location changes, the optional locationChangeBlock will be
+// called. It will be called with nil once upload succeeds or can no longer
+// be attempted.
+@property (copy) void (^locationChangeBlock)(NSURL *locationURL);
+#endif
 
 // the fetcher for the current data chunk, if any
 @property (retain) GTMHTTPFetcher *chunkFetcher;

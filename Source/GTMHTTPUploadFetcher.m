@@ -25,11 +25,19 @@
 static NSUInteger const kQueryServerForOffset = NSUIntegerMax;
 
 @interface GTMHTTPFetcher (ProtectedMethods)
+@property (readwrite, retain) NSData *downloadedData;
 - (void)releaseCallbacks;
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection;
 @end
 
 @interface GTMHTTPUploadFetcher ()
+- (id)initWithRequest:(NSURLRequest *)request
+          locationURL:(NSURL *)locationURL
+           uploadData:(NSData *)data
+     uploadFileHandle:(NSFileHandle *)fileHandle
+       uploadMIMEType:(NSString *)uploadMIMEType
+            chunkSize:(NSUInteger)chunkSize;
+
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset;
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset
                 fetcherProperties:(NSDictionary *)props;
@@ -77,10 +85,11 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 @implementation GTMHTTPUploadFetcher
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
-                                          uploadData:(NSData *)data
-                                      uploadMIMEType:(NSString *)uploadMIMEType
-                                           chunkSize:(NSUInteger)chunkSize {
+                                        uploadData:(NSData *)data
+                                    uploadMIMEType:(NSString *)uploadMIMEType
+                                         chunkSize:(NSUInteger)chunkSize {
   return [[[self alloc] initWithRequest:request
+                            locationURL:nil
                              uploadData:data
                        uploadFileHandle:nil
                          uploadMIMEType:uploadMIMEType
@@ -88,10 +97,23 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 }
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
-                                    uploadFileHandle:(NSFileHandle *)fileHandle
-                                      uploadMIMEType:(NSString *)uploadMIMEType
-                                           chunkSize:(NSUInteger)chunkSize {
+                                  uploadFileHandle:(NSFileHandle *)fileHandle
+                                    uploadMIMEType:(NSString *)uploadMIMEType
+                                         chunkSize:(NSUInteger)chunkSize {
   return [[[self alloc] initWithRequest:request
+                            locationURL:nil
+                             uploadData:nil
+                       uploadFileHandle:fileHandle
+                         uploadMIMEType:uploadMIMEType
+                              chunkSize:chunkSize] autorelease];
+}
+
++ (GTMHTTPUploadFetcher *)uploadFetcherWithLocation:(NSURL *)locationURL
+                                   uploadFileHandle:(NSFileHandle *)fileHandle
+                                     uploadMIMEType:(NSString *)uploadMIMEType
+                                          chunkSize:(NSUInteger)chunkSize {
+  return [[[self alloc] initWithRequest:nil
+                            locationURL:locationURL
                              uploadData:nil
                        uploadFileHandle:fileHandle
                          uploadMIMEType:uploadMIMEType
@@ -99,6 +121,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 }
 
 - (id)initWithRequest:(NSURLRequest *)request
+          locationURL:(NSURL *)location
            uploadData:(NSData *)data
      uploadFileHandle:(NSFileHandle *)fileHandle
        uploadMIMEType:(NSString *)uploadMIMEType
@@ -109,8 +132,12 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 #if DEBUG
     NSAssert((data == nil) != (fileHandle == nil),
              @"upload data and fileHandle are mutually exclusive");
+    NSAssert((request == nil) != (location == nil),
+             @"request and location are mutually exclusive");
+    NSAssert(chunkSize > 0,@"chunk size is zero");
+    NSAssert(chunkSize != NSUIntegerMax, @"chunk size is sentinel value");
 #endif
-
+    [self setLocationURL:location];
     [self setUploadData:data];
     [self setUploadFileHandle:fileHandle];
     [self setUploadMIMEType:uploadMIMEType];
@@ -121,6 +148,10 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 
     // indicate that we've not yet determined the upload fetcher status
     statusCode_ = -1;
+
+    // if this is restarting an upload begun by another fetcher,
+    // the location is specified but the request is nil
+    isRestartedUpload_ = (location != nil);
 
     // add our custom headers to the initial request indicating the data
     // type and total size to be delivered later in the chunk requests
@@ -141,6 +172,9 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 
   [chunkFetcher_ release];
   [locationURL_ release];
+#if NS_BLOCKS_AVAILABLE
+  [locationChangeBlock_ release];
+#endif
   [uploadData_ release];
   [uploadFileHandle_ release];
   [uploadMIMEType_ release];
@@ -187,7 +221,8 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 - (BOOL)beginFetchWithDelegate:(id)delegate
              didFinishSelector:(SEL)finishedSEL {
 
-  GTMAssertSelectorNilOrImplementedWithArgs(delegate, finishedSEL, @encode(GTMHTTPFetcher *), @encode(NSData *), @encode(NSError *), 0);
+  GTMAssertSelectorNilOrImplementedWithArgs(delegate, finishedSEL,
+        @encode(GTMHTTPFetcher *), @encode(NSData *), @encode(NSError *), 0);
 
   // replace the finishedSEL with our own, since the initial finish callback
   // is just the beginning of the upload experience
@@ -199,6 +234,17 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
   needsManualProgress_ = ![GTMHTTPFetcher doesSupportSentDataCallback];
 
   initialBodyLength_ = [[self postData] length];
+
+  if (isRestartedUpload_) {
+    if (![self isPaused]) {
+      if (delegate) {
+        [self setDelegate:delegate];
+        finishedSel_ = finishedSEL;
+      }
+      [self uploadNextChunkWithOffset:kQueryServerForOffset];
+    }
+    return YES;
+  }
 
   // we don't need a finish selector since we're overriding
   // -connectionDidFinishLoading
@@ -215,16 +261,23 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
   void (^holdBlock)(NSData *data, NSError *error) = [[handler copy] autorelease];
 
   BOOL flag = [super beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
-    // note that this block will magically retain holdBlock for us since it's
-    // referenced in this block's body.  Blocks are evil that way.
-    if (error == nil) {
-      // swap in the actual completion block now, as it will be called later
-      // when the upload chunks have completed
-      [completionBlock_ autorelease];
-      completionBlock_ = [holdBlock copy];
+    // callback
+    if (!isRestartedUpload_) {
+      if (error == nil) {
+        // swap in the actual completion block now, as it will be called later
+        // when the upload chunks have completed
+        [completionBlock_ autorelease];
+        completionBlock_ = [holdBlock copy];
+      } else {
+        // pass the error on to the actual completion block
+        holdBlock(nil, error);
+      }
     } else {
-      // pass the error on to the actual completion block
-      holdBlock(nil, error);
+      // If there was no initial request, then this fetch is resuming some
+      // other uploadFetcher's initial request, and the superclass's connection
+      // is never used, so at this point we call the user's actual completion
+      // block.
+      holdBlock(data, error);
     }
   }];
   return flag;
@@ -256,9 +309,15 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   return NO;
 }
 
-- (void)invokeFinalCallbacksWithData:(NSData *)data error:(NSError *)error {
+- (void)invokeFinalCallbacksWithData:(NSData *)data
+                               error:(NSError *)error
+            shouldInvalidateLocation:(BOOL)shouldInvalidateLocation {
   // avoid issues due to being released indirectly by a callback
   [[self retain] autorelease];
+
+  if (shouldInvalidateLocation) {
+    [self setLocationURL:nil];
+  }
 
   if (delegate_ && delegateFinishedSEL_) {
     [self invokeFetchCallback:delegateFinishedSEL_
@@ -269,8 +328,10 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
 
 #if NS_BLOCKS_AVAILABLE
   if (completionBlock_) {
-    completionBlock_(nil, error);
+    completionBlock_(data, error);
   }
+
+  [self setLocationChangeBlock:nil];
 #endif
 
   [self releaseCallbacks];
@@ -292,7 +353,8 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
                                          code:statusCode
                                      userInfo:nil];
     [self invokeFinalCallbacksWithData:[self downloadedData]
-                                 error:error];
+                                 error:error
+              shouldInvalidateLocation:YES];
     return;
   }
 
@@ -318,7 +380,8 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
                                          code:501
                                      userInfo:nil];
     [self invokeFinalCallbacksWithData:[self downloadedData]
-                                 error:error];
+                                 error:error
+              shouldInvalidateLocation:YES];
     return;
   }
 
@@ -466,7 +529,8 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
                                      userInfo:nil];
 
     [self invokeFinalCallbacksWithData:nil
-                                 error:error];
+                                 error:error
+              shouldInvalidateLocation:YES];
     [self destroyChunkFetcher];
   } else {
     // hang on to the fetcher in case we need to cancel it
@@ -510,7 +574,8 @@ totalBytesExpectedToSend:0];
                                   code:status
                               userInfo:nil];
       [self invokeFinalCallbacksWithData:data
-                                   error:error];
+                                   error:error
+                shouldInvalidateLocation:NO];
       [self destroyChunkFetcher];
       return;
     }
@@ -523,7 +588,7 @@ totalBytesExpectedToSend:0];
   #endif
 
     // take the chunk fetcher's data as our own
-    [downloadedData_ setData:data];
+    self.downloadedData = data;
 
     if (needsManualProgress_) {
       // do a final upload progress report, indicating all of the chunk data
@@ -536,7 +601,8 @@ totalBytesExpectedToSend:0];
 
     // we're done
     [self invokeFinalCallbacksWithData:data
-                                 error:nil];
+                                 error:error
+              shouldInvalidateLocation:YES];
     
     [self destroyChunkFetcher];
   }
@@ -714,13 +780,16 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
 
 #pragma mark -
 
-@synthesize locationURL = locationURL_;
-@synthesize uploadData = uploadData_;
-@synthesize uploadFileHandle = uploadFileHandle_;
-@synthesize uploadMIMEType = uploadMIMEType_;
-@synthesize chunkSize = chunkSize_;
-@synthesize currentOffset = currentOffset_;
-@synthesize chunkFetcher = chunkFetcher_;
+@synthesize uploadData = uploadData_,
+            uploadFileHandle = uploadFileHandle_,
+            uploadMIMEType = uploadMIMEType_,
+            chunkSize = chunkSize_,
+            currentOffset = currentOffset_,
+            chunkFetcher = chunkFetcher_;
+
+#if NS_BLOCKS_AVAILABLE
+@synthesize locationChangeBlock = locationChangeBlock_;
+#endif
 
 @dynamic activeFetcher;
 @dynamic responseHeaders;
@@ -785,6 +854,22 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
   }
 }
 
+- (NSURL *)locationURL {
+  return locationURL_;
+}
+
+- (void)setLocationURL:(NSURL *)url {
+  if (url != locationURL_) {
+    [locationURL_ release];
+    locationURL_ = [url retain];
+
+#if NS_BLOCKS_AVAILABLE
+    if (locationChangeBlock_) {
+      locationChangeBlock_(url);
+    }
+#endif
+  }
+}
 @end
 
 #endif // #if !GDATA_REQUIRE_SERVICE_INCLUDES

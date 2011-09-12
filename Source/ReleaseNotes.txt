@@ -3,6 +3,12 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
+9-September-2011
+
+Added support for creating an upload fetcher from a location URL to allow
+restarting uploads with a new upload fetcher instance
+
+
 18-August-2011
 
 Added GTMReadMonitorInputStream for logging uploaded NSInputStreams
