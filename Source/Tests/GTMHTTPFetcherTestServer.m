@@ -260,20 +260,12 @@
               NSLog(@"Cannot find query response file \"%@\"", responsePath);
             }
           } else {
-            // the actual request did not match the expected request;
-            // log what's different
-            NSMutableSet *differentKeys = [NSMutableSet set];
-            NSArray *allKeys = [[requestJSON allKeys] arrayByAddingObjectsFromArray:[expectedJSON allKeys]];
-            for (NSString *key in allKeys) {
-              id requestValue = [requestJSON objectForKey:key];
-              id expectedValue = [expectedJSON objectForKey:key];
-              BOOL doesMatch = (requestValue == expectedValue
-                                || (requestValue && expectedValue
-                                    && [requestValue isEqual:expectedValue]));
-              if (!doesMatch) [differentKeys addObject:key];
-            }
-            NSLog(@"Mismatched request body for \"%@\" in keys (%@)", path,
-                  [[differentKeys allObjects] componentsJoinedByString:@", "]);
+            // the actual request did not match the expected request
+            //
+            // note that the requests may be dictionaries or arrays
+            NSLog(@"Mismatched request body for \"%@\"", path);
+            NSLog(@"\n--------\nExpected request:\n%@", expectedJSON);
+            NSLog(@"\n--------\nActual request:\n%@", requestJSON);
           }
         }
       }

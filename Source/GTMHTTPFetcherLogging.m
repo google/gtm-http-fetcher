@@ -631,14 +631,14 @@ static NSString* gLoggingProcessName = nil;
     NSURL *responseURL = [response URL];
 
     if (responseURL && ![responseURL isEqual:[request URL]]) {
-      NSString *responseURLFormat = @"<br><FONT COLOR='#FF00FF'>response URL:"
-        "</FONT> <code>%@</code>";
+      NSString *responseURLFormat = @"<FONT COLOR='#FF00FF'>response URL:"
+        "</FONT> <code>%@</code><br>\n";
       responseURLStr = [NSString stringWithFormat:responseURLFormat,
         [responseURL absoluteString]];
     }
 
-    [outputHTML appendFormat:@"<b>response:</b>&nbsp;&nbsp;status %@<br>\n",
-      statusString];
+    [outputHTML appendFormat:@"<b>response:</b>&nbsp;&nbsp;status %@<br>\n%@",
+      statusString, responseURLStr];
 
     // Write the response headers
     NSUInteger numberOfResponseHeaders = [responseHeaders count];
