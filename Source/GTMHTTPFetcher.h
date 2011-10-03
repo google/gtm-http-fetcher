@@ -619,7 +619,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 @property (retain) id userData;
 
 // Stored property values are retained for the convenience of the caller
-@property (retain) NSDictionary *properties;
+@property (copy) NSMutableDictionary *properties;
 
 - (void)setProperty:(id)obj forKey:(NSString *)key; // pass nil obj to remove property
 - (id)propertyForKey:(NSString *)key;

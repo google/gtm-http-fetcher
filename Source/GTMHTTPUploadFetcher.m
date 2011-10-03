@@ -412,7 +412,7 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
 }
 
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset
-                fetcherProperties:(NSDictionary *)props {
+                fetcherProperties:(NSMutableDictionary *)props {
   // upload another chunk
   NSUInteger chunkSize = [self chunkSize];
 

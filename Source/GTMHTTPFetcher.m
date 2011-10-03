@@ -1452,21 +1452,22 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
   userData_ = [theObj retain];
 }
 
-- (void)setProperties:(NSDictionary *)dict {
+- (void)setProperties:(NSMutableDictionary *)dict {
   [properties_ autorelease];
+
+  // This copies rather than retains the parameter for compatiblity with
+  // an earlier version that took an immutable parameter and copied it.
   properties_ = [dict mutableCopy];
 }
 
-- (NSDictionary *)properties {
+- (NSMutableDictionary *)properties {
   return properties_;
 }
 
 - (void)setProperty:(id)obj forKey:(NSString *)key {
-
   if (properties_ == nil && obj != nil) {
-    [self setProperties:[NSDictionary dictionary]];
+    [self setProperties:[NSMutableDictionary dictionary]];
   }
-
   [properties_ setValue:obj forKey:key];
 }
 
@@ -1476,7 +1477,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
 - (void)addPropertiesFromDictionary:(NSDictionary *)dict {
   if (properties_ == nil && dict != nil) {
-    [self setProperties:dict];
+    [self setProperties:[[dict mutableCopy] autorelease]];
   } else {
     [properties_ addEntriesFromDictionary:dict];
   }

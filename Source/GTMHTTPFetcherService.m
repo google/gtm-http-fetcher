@@ -49,7 +49,6 @@
     runningHosts_ = [[NSMutableDictionary alloc] init];
     cookieStorageMethod_ = kGTMHTTPFetcherCookieStorageMethodFetchHistory;
 
-    // The default limit is 10 simultaneous fetchers targeting each host
     maxRunningFetchersPerHost_ = 10;
 }
   return self;
@@ -200,8 +199,6 @@
   }
 }
 
-
-
 - (void)fetcherDidStop:(GTMHTTPFetcher *)fetcher {
   // Entry point from the fetcher
   @synchronized(self) {
@@ -243,6 +240,30 @@
     fetcher.serviceHost = nil;
     fetcher.thread = nil;
   }
+}
+
+- (NSUInteger)numberOfFetchers {
+  NSUInteger running = [self numberOfRunningFetchers];
+  NSUInteger delayed = [self numberOfDelayedFetchers];
+  return running + delayed;
+}
+
+- (NSUInteger)numberOfRunningFetchers {
+  NSUInteger sum = 0;
+  for (NSString *host in runningHosts_) {
+    NSArray *fetchers = [runningHosts_ objectForKey:host];
+    sum += [fetchers count];
+  }
+  return sum;
+}
+
+- (NSUInteger)numberOfDelayedFetchers {
+  NSUInteger sum = 0;
+  for (NSString *host in delayedHosts_) {
+    NSArray *fetchers = [delayedHosts_ objectForKey:host];
+    sum += [fetchers count];
+  }
+  return sum;
 }
 
 - (void)stopAllFetchers {
@@ -304,6 +325,20 @@
 - (void)clearHistory {
   [self clearETaggedDataCache];
   [self.fetchHistory removeAllCookies];
+}
+
+#pragma mark Synchronous Wait for Unit Testing
+
+- (void)waitForCompletionOfAllFetchersWithTimeout:(NSTimeInterval)timeoutInSeconds {
+  NSDate* giveUpDate = [NSDate dateWithTimeIntervalSinceNow:timeoutInSeconds];
+
+  while ([self numberOfFetchers] > 0
+         && [giveUpDate timeIntervalSinceNow] > 0) {
+    // Run the current run loop 1/1000 of a second to give the networking
+    // code a chance to work
+    NSDate *stopDate = [NSDate dateWithTimeIntervalSinceNow:0.001];
+    [[NSRunLoop currentRunLoop] runUntilDate:stopDate];
+  }
 }
 
 #pragma mark Accessors

@@ -67,9 +67,15 @@
 // of fetchers, keyed by host
 //
 // A max value of 0 means no fetchers should be delayed.
+//
+// The default limit is 10 simultaneous fetchers targeting each host.
 @property (assign) NSUInteger maxRunningFetchersPerHost;
 @property (retain, readonly) NSDictionary *delayedHosts;
 @property (retain, readonly) NSDictionary *runningHosts;
+
+- (NSUInteger)numberOfFetchers;        // running + delayed fetchers
+- (NSUInteger)numberOfRunningFetchers;
+- (NSUInteger)numberOfDelayedFetchers;
 
 - (void)stopAllFetchers;
 
@@ -91,5 +97,14 @@
 - (void)clearHistory;
 
 @property (nonatomic, retain) id <GTMFetcherAuthorizationProtocol> authorizer;
+
+// Spin the run loop, discarding events, until all running and delayed fetchers
+// have completed
+//
+// This is only for use in testing or in tools without a user interface.
+//
+// Synchronous fetches should never be done by shipping apps; they are
+// sufficient reason for rejection from the app store.
+- (void)waitForCompletionOfAllFetchersWithTimeout:(NSTimeInterval)timeoutInSeconds;
 
 @end
