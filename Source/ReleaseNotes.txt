@@ -3,6 +3,11 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
+7-October-2011
+
+Changed isFetching method to return YES during service and authorization delays
+
+
 9-September-2011
 
 Added support for creating an upload fetcher from a location URL to allow

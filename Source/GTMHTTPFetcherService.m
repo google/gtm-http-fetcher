@@ -121,6 +121,17 @@
   }
 }
 
+- (BOOL)isDelayingFetcher:(GTMHTTPFetcher *)fetcher {
+  BOOL isDelayed;
+  @synchronized(self) {
+    NSString *host = [[[fetcher mutableRequest] URL] host];
+    NSArray *delayedForHost = [delayedHosts_ objectForKey:host];
+    NSUInteger idx = [delayedForHost indexOfObjectIdenticalTo:fetcher];
+    isDelayed = (idx != NSNotFound);
+  }
+  return isDelayed;
+}
+
 - (BOOL)fetcherShouldBeginFetching:(GTMHTTPFetcher *)fetcher {
   // Entry point from the fetcher
   @synchronized(self) {

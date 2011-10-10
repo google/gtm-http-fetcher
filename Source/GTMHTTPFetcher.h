@@ -322,6 +322,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 - (void)fetcherDidStop:(GTMHTTPFetcher *)fetcher;
 
 - (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
+- (BOOL)isDelayingFetcher:(GTMHTTPFetcher *)fetcher;
 @end
 
 @protocol GTMFetcherAuthorizationProtocol <NSObject>
@@ -333,6 +334,8 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
        didFinishSelector:(SEL)sel;
 
 - (void)stopAuthorization;
+
+- (BOOL)isAuthorizingRequest:(NSURLRequest *)request;
 
 - (BOOL)isAuthorizedRequest:(NSURLRequest *)request;
 

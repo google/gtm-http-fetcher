@@ -73,6 +73,8 @@
 @property (retain, readonly) NSDictionary *delayedHosts;
 @property (retain, readonly) NSDictionary *runningHosts;
 
+- (BOOL)isDelayingFetcher:(GTMHTTPFetcher *)fetcher;
+
 - (NSUInteger)numberOfFetchers;        // running + delayed fetchers
 - (NSUInteger)numberOfRunningFetchers;
 - (NSUInteger)numberOfDelayedFetchers;

@@ -539,9 +539,16 @@ CannotBeginFetch:
 }
 
 // Returns YES if this is in the process of fetching a URL, or waiting to
-// retry
+// retry, or waiting for authorization, or waiting to be issued by the
+// service object
 - (BOOL)isFetching {
-  return (connection_ != nil || retryTimer_ != nil);
+  if (connection_ != nil || retryTimer_ != nil) return YES;
+
+  BOOL isAuthorizing = [authorizer_ isAuthorizingRequest:request_];
+  if (isAuthorizing) return YES;
+
+  BOOL isDelayed = [service_ isDelayingFetcher:self];
+  return isDelayed;
 }
 
 // Returns the status code set in connection:didReceiveResponse:

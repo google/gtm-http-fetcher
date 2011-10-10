@@ -664,7 +664,7 @@ static NSString* gLoggingProcessName = nil;
   if (error) {
     [outputHTML appendFormat:@"<b>Error:</b> %@ <br>\n", [error description]];
   }
-  
+
   // Write the response data
   if (responseDataFileName) {
     NSString *escapedResponseFile = [responseDataFileName stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
@@ -689,7 +689,7 @@ static NSString* gLoggingProcessName = nil;
     [outputHTML appendFormat:@"&nbsp;&nbsp; data: %d bytes, <code>%@</code>\n",
      (int)responseDataLength, responseMIMEType];
   }
-  
+
   // Make a single string of the request and response, suitable for copying
   // to the clipboard and pasting into a bug report
   NSMutableString *copyable = [NSMutableString string];
@@ -777,6 +777,14 @@ static NSString* gLoggingProcessName = nil;
     [[self class] removeItemAtPath:symlinkPath];
     [[self class] createSymbolicLinkAtPath:symlinkPath
                        withDestinationPath:htmlPath];
+
+#if GTM_IPHONE
+    static BOOL gReportedLoggingPath = NO;
+    if (!gReportedLoggingPath) {
+      gReportedLoggingPath = YES;
+      NSLog(@"GTMHTTPFetcher logging to \"%@\"", parentDir);
+    }
+#endif
   }
 }
 

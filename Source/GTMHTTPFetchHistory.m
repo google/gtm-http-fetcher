@@ -73,6 +73,15 @@ static NSString* const kGTMETagHeader = @"Etag";
   }
 }
 
+- (void)deleteCookie:(NSHTTPCookie *)cookie {
+  @synchronized(cookies_) {
+    NSHTTPCookie *foundCookie = [self cookieMatchingCookie:cookie];
+    if (foundCookie) {
+      [cookies_ removeObjectIdenticalTo:foundCookie];
+    }
+  }
+}
+
 // retrieve all cookies appropriate for the given URL, considering
 // domain, path, cookie name, expiration, security setting.
 // Side effect: removed expired cookies from the storage array
