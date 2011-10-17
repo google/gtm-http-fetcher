@@ -41,7 +41,7 @@ static NSUInteger const kQueryServerForOffset = NSUIntegerMax;
   
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset;
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset
-                fetcherProperties:(NSDictionary *)props;
+                fetcherProperties:(NSMutableDictionary *)props;
 - (void)destroyChunkFetcher;
 
 - (void)handleResumeIncompleteStatusForChunkFetcher:(GTMHTTPFetcher *)chunkFetcher;
@@ -422,7 +422,7 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
 
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset {
   // use the properties in each chunk fetcher
-  NSDictionary *props = [self properties];
+  NSMutableDictionary *props = [self properties];
 
   [self uploadNextChunkWithOffset:offset
                 fetcherProperties:props];
@@ -663,7 +663,7 @@ totalBytesExpectedToSend:0];
 
   // we want to destroy this chunk fetcher before creating the next one, but
   // we want to pass on its properties
-  NSDictionary *props = [[[chunkFetcher properties] retain] autorelease];
+  NSMutableDictionary *props = [[[chunkFetcher properties] retain] autorelease];
 
   // we no longer need to be able to cancel this chunkFetcher
   [self destroyChunkFetcher];
