@@ -62,6 +62,8 @@
 - (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
 - (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL;
 - (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString;
+- (id)fetcherWithRequest:(NSURLRequest *)request
+            fetcherClass:(Class)fetcherClass;
 
 // Queues of delayed and running fetchers. Each dictionary contains arrays
 // of fetchers, keyed by host

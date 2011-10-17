@@ -70,8 +70,9 @@
 
 #pragma mark Generate a new fetcher
 
-- (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request {
-  GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:request];
+- (id)fetcherWithRequest:(NSURLRequest *)request
+                          fetcherClass:(Class)fetcherClass {
+  GTMHTTPFetcher *fetcher = [fetcherClass fetcherWithRequest:request];
 
   fetcher.fetchHistory = self.fetchHistory;
   fetcher.runLoopModes = self.runLoopModes;
@@ -83,6 +84,11 @@
   fetcher.service = self;
 
   return fetcher;
+}
+
+- (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request {
+  return [self fetcherWithRequest:request
+                     fetcherClass:[GTMHTTPFetcher class]];
 }
 
 - (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL {

@@ -31,13 +31,14 @@ static NSUInteger const kQueryServerForOffset = NSUIntegerMax;
 @end
 
 @interface GTMHTTPUploadFetcher ()
-- (id)initWithRequest:(NSURLRequest *)request
-          locationURL:(NSURL *)locationURL
-           uploadData:(NSData *)data
-     uploadFileHandle:(NSFileHandle *)fileHandle
-       uploadMIMEType:(NSString *)uploadMIMEType
-            chunkSize:(NSUInteger)chunkSize;
-
++ (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
+                                    fetcherService:(GTMHTTPFetcherService *)fetcherService;
+- (void)setLocationURL:(NSURL *)location
+            uploadData:(NSData *)data
+      uploadFileHandle:(NSFileHandle *)fileHandle
+        uploadMIMEType:(NSString *)uploadMIMEType
+             chunkSize:(NSUInteger)chunkSize;
+  
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset;
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset
                 fetcherProperties:(NSDictionary *)props;
@@ -87,84 +88,100 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 + (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
                                         uploadData:(NSData *)data
                                     uploadMIMEType:(NSString *)uploadMIMEType
-                                         chunkSize:(NSUInteger)chunkSize {
-  return [[[self alloc] initWithRequest:request
-                            locationURL:nil
-                             uploadData:data
-                       uploadFileHandle:nil
-                         uploadMIMEType:uploadMIMEType
-                              chunkSize:chunkSize] autorelease];
+                                         chunkSize:(NSUInteger)chunkSize
+                                    fetcherService:(GTMHTTPFetcherService *)fetcherService {
+  GTMHTTPUploadFetcher *fetcher = [self uploadFetcherWithRequest:request
+                                                  fetcherService:fetcherService];
+  [fetcher setLocationURL:nil
+               uploadData:data
+         uploadFileHandle:nil
+           uploadMIMEType:uploadMIMEType
+                chunkSize:chunkSize];
+  return fetcher;
 }
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
                                   uploadFileHandle:(NSFileHandle *)fileHandle
                                     uploadMIMEType:(NSString *)uploadMIMEType
-                                         chunkSize:(NSUInteger)chunkSize {
-  return [[[self alloc] initWithRequest:request
-                            locationURL:nil
-                             uploadData:nil
-                       uploadFileHandle:fileHandle
-                         uploadMIMEType:uploadMIMEType
-                              chunkSize:chunkSize] autorelease];
+                                         chunkSize:(NSUInteger)chunkSize
+                                    fetcherService:(GTMHTTPFetcherService *)fetcherService {
+  GTMHTTPUploadFetcher *fetcher = [self uploadFetcherWithRequest:request
+                                                  fetcherService:fetcherService];
+  [fetcher setLocationURL:nil
+               uploadData:nil
+         uploadFileHandle:fileHandle
+           uploadMIMEType:uploadMIMEType
+                chunkSize:chunkSize];
+  return fetcher;
 }
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithLocation:(NSURL *)locationURL
                                    uploadFileHandle:(NSFileHandle *)fileHandle
                                      uploadMIMEType:(NSString *)uploadMIMEType
-                                          chunkSize:(NSUInteger)chunkSize {
-  return [[[self alloc] initWithRequest:nil
-                            locationURL:locationURL
-                             uploadData:nil
-                       uploadFileHandle:fileHandle
-                         uploadMIMEType:uploadMIMEType
-                              chunkSize:chunkSize] autorelease];
+                                          chunkSize:(NSUInteger)chunkSize
+                                     fetcherService:(GTMHTTPFetcherService *)fetcherService {
+  GTMHTTPUploadFetcher *fetcher = [self uploadFetcherWithRequest:nil
+                                                  fetcherService:fetcherService];
+  [fetcher setLocationURL:locationURL
+               uploadData:nil
+         uploadFileHandle:fileHandle
+           uploadMIMEType:uploadMIMEType
+                chunkSize:chunkSize];
+  return fetcher;
 }
 
-- (id)initWithRequest:(NSURLRequest *)request
-          locationURL:(NSURL *)location
-           uploadData:(NSData *)data
-     uploadFileHandle:(NSFileHandle *)fileHandle
-       uploadMIMEType:(NSString *)uploadMIMEType
-            chunkSize:(NSUInteger)chunkSize {
-
-  self = [super initWithRequest:request];
-  if (self) {
-#if DEBUG
-    NSAssert((data == nil) != (fileHandle == nil),
-             @"upload data and fileHandle are mutually exclusive");
-    NSAssert((request == nil) != (location == nil),
-             @"request and location are mutually exclusive");
-    NSAssert(chunkSize > 0,@"chunk size is zero");
-    NSAssert(chunkSize != NSUIntegerMax, @"chunk size is sentinel value");
-#endif
-    [self setLocationURL:location];
-    [self setUploadData:data];
-    [self setUploadFileHandle:fileHandle];
-    [self setUploadMIMEType:uploadMIMEType];
-    [self setChunkSize:chunkSize];
-
-    // indicate that we've not yet determined the file handle's length
-    uploadFileHandleLength_ = -1;
-
-    // indicate that we've not yet determined the upload fetcher status
-    statusCode_ = -1;
-
-    // if this is restarting an upload begun by another fetcher,
-    // the location is specified but the request is nil
-    isRestartedUpload_ = (location != nil);
-
-    // add our custom headers to the initial request indicating the data
-    // type and total size to be delivered later in the chunk requests
-    NSMutableURLRequest *mutableReq = [self mutableRequest];
-
-    NSNumber *lengthNum = [NSNumber numberWithUnsignedInteger:[self fullUploadLength]];
-    [mutableReq setValue:[lengthNum stringValue]
-      forHTTPHeaderField:@"X-Upload-Content-Length"];
-
-    [mutableReq setValue:uploadMIMEType
-      forHTTPHeaderField:@"X-Upload-Content-Type"];
++ (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
+                                    fetcherService:(GTMHTTPFetcherService *)fetcherService {
+  // Internal utility method for instantiating fetchers
+  GTMHTTPUploadFetcher *fetcher;
+  if (fetcherService) {
+    fetcher = [fetcherService fetcherWithRequest:request
+                                    fetcherClass:self];
+  } else {
+    fetcher = (GTMHTTPUploadFetcher *) [self fetcherWithRequest:request];
   }
-  return self;
+  return fetcher;
+}
+
+- (void)setLocationURL:(NSURL *)location
+            uploadData:(NSData *)data
+      uploadFileHandle:(NSFileHandle *)fileHandle
+        uploadMIMEType:(NSString *)uploadMIMEType
+             chunkSize:(NSUInteger)chunkSize {
+#if DEBUG
+  NSAssert((data == nil) != (fileHandle == nil),
+           @"upload data and fileHandle are mutually exclusive");
+  NSAssert((self.mutableRequest == nil) != (location == nil),
+           @"request and location are mutually exclusive");
+  NSAssert(chunkSize > 0,@"chunk size is zero");
+  NSAssert(chunkSize != NSUIntegerMax, @"chunk size is sentinel value");
+#endif
+  [self setLocationURL:location];
+  [self setUploadData:data];
+  [self setUploadFileHandle:fileHandle];
+  [self setUploadMIMEType:uploadMIMEType];
+  [self setChunkSize:chunkSize];
+
+  // indicate that we've not yet determined the file handle's length
+  uploadFileHandleLength_ = -1;
+
+  // indicate that we've not yet determined the upload fetcher status
+  statusCode_ = -1;
+
+  // if this is restarting an upload begun by another fetcher,
+  // the location is specified but the request is nil
+  isRestartedUpload_ = (location != nil);
+
+  // add our custom headers to the initial request indicating the data
+  // type and total size to be delivered later in the chunk requests
+  NSMutableURLRequest *mutableReq = [self mutableRequest];
+
+  NSNumber *lengthNum = [NSNumber numberWithUnsignedInteger:[self fullUploadLength]];
+  [mutableReq setValue:[lengthNum stringValue]
+    forHTTPHeaderField:@"X-Upload-Content-Length"];
+
+  [mutableReq setValue:uploadMIMEType
+    forHTTPHeaderField:@"X-Upload-Content-Type"];
 }
 
 - (void)dealloc {

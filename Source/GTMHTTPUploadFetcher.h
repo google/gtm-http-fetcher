@@ -39,6 +39,7 @@
 #pragma once
 
 #import "GTMHTTPFetcher.h"
+#import "GTMHTTPFetcherService.h"
 
 // async retrieval of an http get or post
 @interface GTMHTTPUploadFetcher : GTMHTTPFetcher {
@@ -86,19 +87,22 @@
 }
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
-                                          uploadData:(NSData *)data
-                                      uploadMIMEType:(NSString *)uploadMIMEType
-                                           chunkSize:(NSUInteger)chunkSize;
+                                        uploadData:(NSData *)data
+                                    uploadMIMEType:(NSString *)uploadMIMEType
+                                         chunkSize:(NSUInteger)chunkSize
+                                    fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil;
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
-                                    uploadFileHandle:(NSFileHandle *)fileHandle
-                                      uploadMIMEType:(NSString *)uploadMIMEType
-                                           chunkSize:(NSUInteger)chunkSize;
+                                  uploadFileHandle:(NSFileHandle *)fileHandle
+                                    uploadMIMEType:(NSString *)uploadMIMEType
+                                         chunkSize:(NSUInteger)chunkSize
+                                    fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil;
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithLocation:(NSURL *)locationURL
                                    uploadFileHandle:(NSFileHandle *)fileHandle
                                      uploadMIMEType:(NSString *)uploadMIMEType
-                                          chunkSize:(NSUInteger)chunkSize;
+                                          chunkSize:(NSUInteger)chunkSize
+                                     fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil;
 - (void)pauseFetching;
 - (void)resumeFetching;
 - (BOOL)isPaused;
