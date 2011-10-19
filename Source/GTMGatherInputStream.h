@@ -28,6 +28,8 @@
 #if defined(GTL_TARGET_NAMESPACE)
   // we need NSInteger for the 10.4 SDK, or we're using target namespace macros
   #import "GTLDefines.h"
+#elif defined(GDATA_TARGET_NAMESPACE)
+  #import "GDataDefines.h"
 #endif
 
 // Define <NSStreamDelegate> only for Mac OS X 10.6+ or iPhone OS 4.0+.
