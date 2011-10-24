@@ -644,7 +644,8 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   GTMHTTPUploadFetcher *fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
                                                                 uploadFileHandle:bigFileHandle
                                                                   uploadMIMEType:@"text/plain"
-                                                                       chunkSize:75000];
+                                                                       chunkSize:75000
+                                                                  fetcherService:nil];
 
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
@@ -694,7 +695,8 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
                                                 uploadData:bigData
                                             uploadMIMEType:@"text/plain"
-                                                 chunkSize:75000];
+                                                 chunkSize:75000
+                                            fetcherService:nil];
 
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
@@ -734,7 +736,8 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
                                                 uploadData:bigData
                                             uploadMIMEType:@"text/plain"
-                                                 chunkSize:75000];
+                                                 chunkSize:75000
+                                            fetcherService:nil];
 
   // add a property to the fetcher that our progress callback will look for to
   // know when to pause and resume the upload
@@ -773,7 +776,8 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
                                                 uploadData:bigData
                                             uploadMIMEType:@"text/plain"
-                                                 chunkSize:75000];
+                                                 chunkSize:75000
+                                            fetcherService:nil];
 
   [fetcher setSentDataBlock:^(NSInteger bytesSent, NSInteger totalBytesSent, NSInteger expectedBytes) {
     [self uploadFetcher:fetcher
@@ -818,7 +822,8 @@ totalBytesExpectedToSend:expectedBytes];
   fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
                                                 uploadData:bigData
                                             uploadMIMEType:@"text/plain"
-                                                 chunkSize:75000];
+                                                 chunkSize:75000
+                                            fetcherService:nil];
   fetcher.retryEnabled = YES;
   fetcher.retrySelector = retrySel;
   fetcher.sentDataSelector = progressSel;
@@ -855,7 +860,8 @@ totalBytesExpectedToSend:expectedBytes];
   fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
                                                 uploadData:bigData
                                             uploadMIMEType:@"text/plain"
-                                                 chunkSize:75000];
+                                                 chunkSize:75000
+                                            fetcherService:nil];
   fetcher.retryEnabled = YES;
   [fetcher setRetryBlock:^(BOOL suggestedWillRetry, NSError *error) {
     BOOL shouldRetry = [self uploadRetryFetcher:fetcher
@@ -906,7 +912,8 @@ totalBytesExpectedToSend:expectedBytes];
   fetcher = [GTMHTTPUploadFetcher uploadFetcherWithRequest:request
                                                 uploadData:smallData
                                             uploadMIMEType:@"text/plain"
-                                                 chunkSize:75000];
+                                                 chunkSize:75000
+                                            fetcherService:nil];
 
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];

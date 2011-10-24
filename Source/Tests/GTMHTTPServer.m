@@ -78,8 +78,10 @@ static NSString *kResponse = @"Response";
     }
     delegate_ = delegate;
 
+#ifndef NS_BLOCK_ASSERTIONS
     BOOL isDelegateOK = [delegate_ respondsToSelector:@selector(httpServer:handleRequest:)];
     NSAssert(isDelegateOK, @"GTMHTTPServer delegate lacks handleRequest sel");
+#endif
 
     localhostOnly_ = YES;
     connections_ = [[NSMutableArray alloc] init];
