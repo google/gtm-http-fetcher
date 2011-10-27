@@ -133,7 +133,7 @@
     NSString *host = [[[fetcher mutableRequest] URL] host];
     NSArray *delayedForHost = [delayedHosts_ objectForKey:host];
     NSUInteger idx = [delayedForHost indexOfObjectIdenticalTo:fetcher];
-    isDelayed = (idx != NSNotFound);
+    isDelayed = (delayedForHost != nil) && (idx != NSNotFound);
   }
   return isDelayed;
 }
