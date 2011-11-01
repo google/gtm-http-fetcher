@@ -343,6 +343,8 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 
 @optional
 @property (assign) id <GTMHTTPFetcherServiceProtocol> fetcherService; // WEAK
+
+- (BOOL)primeForRefresh;
 @end
 
 // GTMHTTPFetcher objects are used for async retrieval of an http get or post
@@ -409,6 +411,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
   NSTimeInterval minRetryInterval_; // random between 1 and 2 seconds
   NSTimeInterval retryFactor_;      // default interval multiplier is 2
   NSTimeInterval lastRetryInterval_;
+  BOOL hasAttemptedAuthRefresh_;
 
   NSString *comment_;               // comment for log
   NSString *log_;

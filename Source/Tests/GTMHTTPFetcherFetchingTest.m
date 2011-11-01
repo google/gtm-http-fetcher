@@ -60,6 +60,19 @@
 - (NSString *)localPathForFileName:(NSString *)name;
 @end
 
+// Authorization testing
+@interface TestAuthorizer : NSObject <GTMFetcherAuthorizationProtocol> {
+  BOOL hasExpired_;
+}
+@property (assign) BOOL expired;
+
++ (TestAuthorizer *)authorizer;
++ (TestAuthorizer *)expiredAuthorizer;
+@end
+
+static NSString *const kGoodBearerValue = @"Bearer good";
+static NSString *const kExpiredBearerValue = @"Bearer expired";
+
 @implementation GTMHTTPFetcherFetchingTest
 
 static const NSTimeInterval kRunLoopInterval = 0.01;
@@ -73,7 +86,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
 - (NSString *)docRootPath {
   NSBundle *testBundle = [NSBundle bundleForClass:[self class]];
   STAssertNotNil(testBundle, nil);
-  
+
   NSString *docFolder = [testBundle resourcePath];
   return docFolder;
 }
@@ -128,6 +141,12 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   fetchHistory_ = nil;
 }
 
+- (NSData *)gettysburgAddress {
+  NSString *gettysburgPath = [testServer_ localPathForFile:kValidFileName];
+  NSData *gettysburgAddress = [NSData dataWithContentsOfFile:gettysburgPath];
+  return gettysburgAddress;
+}
+
 #pragma mark Notification callbacks
 
 - (void)fetchStateChanged:(NSNotification *)note {
@@ -179,8 +198,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
                  fetchedStatus_, fetcherError_, urlString);
 
   // we'll verify we fetched from the server the actual data on disk
-  NSString *gettysburgPath = [testServer_ localPathForFile:kValidFileName];
-  NSData *gettysburgAddress = [NSData dataWithContentsOfFile:gettysburgPath];
+  NSData *gettysburgAddress = [self gettysburgAddress];
   STAssertEqualObjects(fetchedData_, gettysburgAddress,
                        @"Lincoln disappointed");
 
@@ -272,6 +290,92 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertEquals(fetchStoppedNotificationCount_, 4, @"fetches stopped");
   STAssertEquals(retryDelayStartedNotificationCount_, 0, @"retries started");
   STAssertEquals(retryDelayStoppedNotificationCount_, 0, @"retries started");
+}
+
+- (void)testAuthorizorFetch {
+  if (!isServerRunning_) return;
+  [self resetNotificationCounts];
+
+  //
+  // fetch a live, authorized URL
+  //
+  NSString *authName = [kValidFileName stringByAppendingFormat:@"?oauth2=good"];
+  NSString *authedURL = [self localURLStringToTestFileName:authName];
+
+  NSURLRequest *req = [NSURLRequest requestWithURL:[NSURL URLWithString:authedURL]
+                                       cachePolicy:NSURLRequestReloadIgnoringCacheData
+                                   timeoutInterval:kGiveUpInterval];
+
+  __block BOOL hasFinishedFetching = NO;
+  __block GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  STAssertNotNil(fetcher, @"Failed to allocate fetcher");
+
+  fetcher.authorizer = [TestAuthorizer authorizer];
+
+  void (^completionBlock)(NSData *, NSError *) = ^(NSData *data, NSError *error) {
+    STAssertEqualObjects(data, [self gettysburgAddress], @"wrong data");
+    STAssertNil(error, @"unexpected status error");
+    hasFinishedFetching = YES;
+  };
+
+  [fetcher beginFetchWithCompletionHandler:completionBlock];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+  STAssertTrue(hasFinishedFetching, @"auth 1 fetch failed");
+
+  //
+  // fetch with an expired authorizer, no retry allowed
+  //
+  authName = [kValidFileName stringByAppendingFormat:@"?oauth2=good"];
+  authedURL = [self localURLStringToTestFileName:authName];
+
+  req = [NSURLRequest requestWithURL:[NSURL URLWithString:authedURL]
+                                       cachePolicy:NSURLRequestReloadIgnoringCacheData
+                                   timeoutInterval:kGiveUpInterval];
+
+  hasFinishedFetching = NO;
+  fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  fetcher.retryBlock = ^(BOOL suggestedWillRetry, NSError *error) {
+    return NO;
+  };
+  STAssertNotNil(fetcher, @"Failed to allocate fetcher");
+
+  fetcher.authorizer = [TestAuthorizer expiredAuthorizer];
+
+  completionBlock = ^(NSData *data, NSError *error) {
+    STAssertEquals([error code], (NSInteger) 401,
+                   @"unexpected status, error=%@", error);
+    hasFinishedFetching = YES;
+  };
+
+  [fetcher beginFetchWithCompletionHandler:completionBlock];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+  STAssertTrue(hasFinishedFetching, @"auth 2 fetch failed");
+
+  //
+  // fetch with an expired authorizer, with automatic refresh
+  //
+  authName = [kValidFileName stringByAppendingFormat:@"?oauth2=good"];
+  authedURL = [self localURLStringToTestFileName:authName];
+
+  req = [NSURLRequest requestWithURL:[NSURL URLWithString:authedURL]
+                         cachePolicy:NSURLRequestReloadIgnoringCacheData
+                     timeoutInterval:kGiveUpInterval];
+
+  hasFinishedFetching = NO;
+  fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  STAssertNotNil(fetcher, @"Failed to allocate fetcher");
+
+  fetcher.authorizer = [TestAuthorizer expiredAuthorizer];
+
+  completionBlock = ^(NSData *data, NSError *error) {
+    STAssertEqualObjects(data, [self gettysburgAddress], @"wrong data");
+    STAssertNil(error, @"unexpected error");
+    hasFinishedFetching = YES;
+  };
+
+  [fetcher beginFetchWithCompletionHandler:completionBlock];
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+  STAssertTrue(hasFinishedFetching, @"auth 3 fetch failed");
 }
 
 - (void)testWrongFetch {
@@ -612,8 +716,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   NSData *bigData = [self generatedUploadDataWithLength:199000];
   NSData *smallData = [self generatedUploadDataWithLength:13];
 
-  NSString *gettysburgPath = [testServer_ localPathForFile:kValidFileName];
-  NSData *gettysburgAddress = [NSData dataWithContentsOfFile:gettysburgPath];
+  NSData *gettysburgAddress = [self gettysburgAddress];
 
   // write the big data into a temp file
   NSString *tempDir = NSTemporaryDirectory();
@@ -1086,6 +1189,63 @@ totalBytesExpectedToSend:expectedBytes];
   [[fetcher mutableRequest] setURL:url];
 
   return YES; // do the retry fetch; it should succeed now
+}
+
+@end
+
+@implementation TestAuthorizer
+
+@synthesize expired = hasExpired_;
+
++ (TestAuthorizer *)authorizer {
+  return [[[self alloc] init] autorelease];
+}
+
++ (TestAuthorizer *)expiredAuthorizer {
+  TestAuthorizer *authorizer = [self authorizer];
+  authorizer.expired = YES;
+  return authorizer;
+}
+
+- (void)authorizeRequest:(NSMutableURLRequest *)request
+                delegate:(id)delegate
+       didFinishSelector:(SEL)sel {
+  NSString *value = self.expired ? kExpiredBearerValue : kGoodBearerValue;
+  [request setValue:value forHTTPHeaderField:@"Authorization"];
+  NSError *error = nil;
+
+  if (delegate && sel) {
+    NSMethodSignature *sig = [delegate methodSignatureForSelector:sel];
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:sig];
+    [invocation setSelector:sel];
+    [invocation setTarget:delegate];
+    [invocation setArgument:&self atIndex:2];
+    [invocation setArgument:&request atIndex:3];
+    [invocation setArgument:&error atIndex:4];
+    [invocation invoke];
+  }
+}
+
+- (void)stopAuthorization {
+}
+
+- (BOOL)isAuthorizingRequest:(NSURLRequest *)request {
+  return NO;
+}
+
+- (BOOL)isAuthorizedRequest:(NSURLRequest *)request {
+  NSString *value = [[request allHTTPHeaderFields] objectForKey:@"Authorization"];
+  BOOL isValid = [value isEqual:kGoodBearerValue];
+  return isValid;
+}
+
+- (NSString *)userEmail {
+ return @"";
+}
+
+- (BOOL)primeForRefresh {
+  self.expired = NO;
+  return YES;
 }
 
 @end

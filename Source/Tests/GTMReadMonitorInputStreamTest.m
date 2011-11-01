@@ -84,9 +84,9 @@
 }
 
 
- - (void)inputStream:(GTMReadMonitorInputStream *)stream
-      readIntoBuffer:(uint8_t *)buffer
-              length:(unsigned long long)length {
+- (void)inputStream:(GTMReadMonitorInputStream *)stream
+     readIntoBuffer:(uint8_t *)buffer
+             length:(NSUInteger)length {
   [monitoredData_ appendBytes:buffer
                        length:length];
 }

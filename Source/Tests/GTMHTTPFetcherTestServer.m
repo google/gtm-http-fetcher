@@ -189,12 +189,19 @@
 
   // if there's an "auth=foo" query parameter, then the value of the
   // Authorization header should be "foo"
-  NSString *authStr = [self valueForParameter:@"oauth" query:query];
+  NSString *authStr = [self valueForParameter:@"oauth2" query:query];
   if (authStr) {
-    NSString *oauthMatch = [@"OAuth " stringByAppendingString:authStr];
-    if (![authorization isEqualToString:oauthMatch]) {
+    NSString *bearerStr = [@"Bearer " stringByAppendingString:authStr];
+    if (authorization == nil
+        || ![authorization isEqualToString:bearerStr]) {
       // return status 401 Unauthorized
-      GTMHTTPResponseMessage *response = [GTMHTTPResponseMessage emptyResponseWithCode:401];
+      NSString *errStr = [NSString stringWithFormat:@"Authorization \"%@\" should be \"%@\"",
+                          authorization, bearerStr];
+      NSData *errData = [errStr dataUsingEncoding:NSUTF8StringEncoding];
+      GTMHTTPResponseMessage *response;
+      response = [GTMHTTPResponseMessage responseWithBody:errData
+                                              contentType:@"text/plain"
+                                               statusCode:401];
       return response;
     }
   }

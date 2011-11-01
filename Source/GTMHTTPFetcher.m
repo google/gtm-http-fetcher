@@ -488,12 +488,17 @@ CannotBeginFetch:
 - (NSString *)createTempDownloadFilePathForPath:(NSString *)targetPath {
   NSString *tempDir = nil;
 
-#if (!TARGET_OS_IPHONE && (MAC_OS_X_VERSION_MAX_ALLOWED >= 1060)) || (TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 40000))
+#if (!TARGET_OS_IPHONE && (MAC_OS_X_VERSION_MAX_ALLOWED >= 1060))
   // find an appropriate directory for the download, ideally on the same disk
   // as the final target location so the temporary file won't have to be moved
   // to a different disk
   //
   // available in SDKs for 10.6 and iOS 4
+  //
+  // Oct 2011: We previously also used URLForDirectory for
+  //   (TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 40000))
+  // but that is returning a non-temporary directory for iOS, unfortunately
+
   SEL sel = @selector(URLForDirectory:inDomain:appropriateForURL:create:error:);
   if ([NSFileManager instancesRespondToSelector:sel]) {
     NSError *error = nil;
@@ -1185,39 +1190,55 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 // shouldRetryNowForStatus:error: returns YES if the user has enabled retries
 // and the status or error is one that is suitable for retrying.  "Suitable"
 // means either the isRetryError:'s list contains the status or error, or the
-// user's retrySelector: is present and returns YES when called.
+// user's retrySelector: is present and returns YES when called, or the
+// authorizer may be able to fix.
 - (BOOL)shouldRetryNowForStatus:(NSInteger)status
                           error:(NSError *)error {
+  // Determine if a refreshed authorizer may avoid an authorization error
+  BOOL shouldRetryForAuthRefresh = NO;
+  BOOL isFirstAuthError = (authorizer_ != nil)
+    && !hasAttemptedAuthRefresh_
+    && (status == kGTMHTTPFetcherStatusUnauthorized); // 401
 
-  if ([self isRetryEnabled]) {
-
-    if ([self nextRetryInterval] < [self maxRetryInterval]) {
-
-      if (error == nil) {
-        // make an error for the status
-       error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
-                                   code:status
-                               userInfo:nil];
+  if (isFirstAuthError) {
+    if ([authorizer_ respondsToSelector:@selector(primeForRefresh)]) {
+      BOOL hasPrimed = [authorizer_ primeForRefresh];
+      if (hasPrimed) {
+        shouldRetryForAuthRefresh = YES;
+        hasAttemptedAuthRefresh_ = YES;
       }
-
-      BOOL willRetry = [self isRetryError:error];
-
-      willRetry = [self invokeRetryCallback:retrySel_
-                                     target:delegate_
-                                  willRetry:willRetry
-                                      error:error];
-
-#if NS_BLOCKS_AVAILABLE
-      if (retryBlock_) {
-        willRetry = retryBlock_(willRetry, error);
-      }
-#endif
-
-      return willRetry;
     }
   }
 
-  return NO;
+  // Determine if we're doing exponential backoff retries
+  BOOL shouldDoIntervalRetry = [self isRetryEnabled]
+    && ([self nextRetryInterval] < [self maxRetryInterval]);
+
+  BOOL willRetry = NO;
+  BOOL canRetry = shouldRetryForAuthRefresh || shouldDoIntervalRetry;
+  if (canRetry) {
+    // Check if this is a retryable error
+    if (error == nil) {
+      // Make an error for the status
+      error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
+                                  code:status
+                              userInfo:nil];
+    }
+
+    willRetry = shouldRetryForAuthRefresh || [self isRetryError:error];
+
+    // If the user has installed a retry callback, consult that
+    willRetry = [self invokeRetryCallback:retrySel_
+                                   target:delegate_
+                                willRetry:willRetry
+                                    error:error];
+#if NS_BLOCKS_AVAILABLE
+    if (retryBlock_) {
+      willRetry = retryBlock_(willRetry, error);
+    }
+#endif
+  }
+  return willRetry;
 }
 
 - (void)beginRetryTimer {
