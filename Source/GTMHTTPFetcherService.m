@@ -233,13 +233,20 @@
 
     while ([delayedForHost count] > 0
            && [runningForHost count] < maxRunningFetchersPerHost_) {
-      // Start another delayed fetcher running
-      GTMHTTPFetcher *nextFetcher = [delayedForHost objectAtIndex:0];
+      // Start another delayed fetcher running, scanning for the minimum
+      // priority value, defaulting to FIFO for equal priorities
+      GTMHTTPFetcher *nextFetcher = nil;
+      for (GTMHTTPFetcher *delayedFetcher in delayedForHost) {
+        if (nextFetcher == nil
+            || delayedFetcher.servicePriority < nextFetcher.servicePriority) {
+          nextFetcher = delayedFetcher;
+        }
+      }
 
       [self addRunningFetcher:nextFetcher forHost:host];
       runningForHost = [runningHosts_ objectForKey:host];
 
-      [delayedForHost removeObjectAtIndex:0];
+      [delayedForHost removeObjectIdenticalTo:nextFetcher];
       [self startFetcher:nextFetcher];
     }
 

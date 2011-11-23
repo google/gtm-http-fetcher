@@ -401,6 +401,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
   // the service object that created and monitors this fetcher, if any
   id <GTMHTTPFetcherServiceProtocol> service_;
   NSString *serviceHost_;
+  NSInteger servicePriority_;
   NSThread *thread_;
 
   BOOL isRetryEnabled_;             // user wants auto-retry
@@ -468,6 +469,13 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 
 // The host, if any, used to classify this fetcher in the fetcher service
 @property (copy) NSString *serviceHost;
+
+// The priority, if any, used for starting fetchers in the fetcher service
+//
+// Lower values are higher priority; the default is 0, and values may
+// be negative or positive. This priority affects only the start order of
+// fetchers that are being delayed by a fetcher service.
+@property (assign) NSInteger servicePriority;
 
 // The thread used to run this fetcher in the fetcher service
 @property (retain) NSThread *thread;

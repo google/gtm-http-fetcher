@@ -161,6 +161,11 @@ const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 #endif
 
 - (void)dealloc {
+#if DEBUG
+  NSAssert(!isStopNotificationNeeded_,
+           @"unbalanced fetcher notification for %@", [request_ URL]);
+#endif
+
   // Note: if a connection or a retry timer was pending, then this instance
   // would be retained by those so it wouldn't be getting dealloc'd,
   // hence we don't need to stopFetch here
@@ -617,10 +622,10 @@ CannotBeginFetch:
 
     // this may be called in a callback from the connection, so use autorelease
     [oldConnection autorelease];
-
-    // send the stopped notification
-    [self sendStopNotificationIfNeeded];
   }
+
+  // send the stopped notification
+  [self sendStopNotificationIfNeeded];
 
   [authorizer_ stopAuthorization];
 
@@ -1375,6 +1380,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
             authorizer = authorizer_,
             service = service_,
             serviceHost = serviceHost_,
+            servicePriority = servicePriority_,
             thread = thread_,
             sentDataSelector = sentDataSel_,
             receivedDataSelector = receivedDataSel_,

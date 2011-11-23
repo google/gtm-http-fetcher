@@ -70,11 +70,23 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
     }
     return counter;
   };
-
+  
   NSUInteger (^FetchersPerHost) (NSArray *, NSString *) = ^(NSArray *fetchers,
                                                             NSString *host) {
     NSArray *fetcherURLs = [fetchers valueForKeyPath:@"mutableRequest.URL"];
     return URLsPerHost(fetcherURLs, host);
+  };
+
+  // Utility block for finding the minimum priority fetcher for a specific host
+  NSInteger (^PriorityPerHost) (NSArray *, NSString *) = ^(NSArray *fetchers,
+                                                            NSString *host) {
+    NSInteger val = NSIntegerMax;
+    for (GTMHTTPFetcher *fetcher in fetchers) {
+      if ([host isEqual:[[fetcher.mutableRequest URL] host]]) {
+        val = MIN(val, fetcher.servicePriority);
+      }
+    }
+    return val;
   };
 
   // We'll verify we fetched from the server the same data that is on disk
@@ -121,6 +133,8 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   __block NSMutableArray *running = [NSMutableArray array];
   __block NSMutableArray *completed = [NSMutableArray array];
 
+  NSUInteger priorityVal = 0;
+
   // Create all the fetchers
   for (NSURL *fileURL in urlArray) {
     GTMHTTPFetcher *fetcher = [service fetcherWithURL:fileURL];
@@ -140,6 +154,10 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
                   STAssertTrue(numberRunning > 0, @"count error");
                   STAssertTrue(numberRunning <= kMaxRunningFetchersPerHost,
                                @"too many running");
+
+                  NSInteger pendingPriority = PriorityPerHost(pending, host);
+                  STAssertTrue(fetcher.servicePriority <= pendingPriority,
+                               @"a pending fetcher has greater priority");
 
                   STAssertEquals([service numberOfFetchers],
                                  [running count] + [pending count],
@@ -182,6 +200,11 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
                 }];
 
     [pending addObject:fetcher];
+
+    // Set the fetch priority to a value that cycles 0, 1, -1, 0, ...
+    priorityVal++;
+    if (priorityVal > 1) priorityVal = -1;
+    fetcher.servicePriority = priorityVal;
 
     // Start this fetcher
     [fetcher beginFetchWithCompletionHandler:^(NSData *fetchData, NSError *fetchError) {
