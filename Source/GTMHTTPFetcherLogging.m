@@ -560,9 +560,13 @@ static NSString* gLoggingProcessName = nil;
   }
 
   // write the request post data, toggleable
-  NSData *postData = postData_;
+  NSData *postData;
   if (loggedStreamData_) {
-    postData = loggedStreamData_;
+    postData = loggedStreamData_; 
+  } else if (postData_) {
+    postData = postData_;
+  } else {
+    postData = [request_ HTTPBody];
   }
 
   NSString *postDataStr = nil;
