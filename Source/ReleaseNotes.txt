@@ -3,6 +3,18 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
+22-November-2011
+
+Fetchers now support a servicePriority property which affects the order in
+which the fetcher service object dequeues delayed fetchers
+
+
+1-November-2011
+
+On status 401 results when using an authorizer, the fetcher will attempt a
+single retry if the authorizer implements a primeForRefresh method
+
+
 7-October-2011
 
 Changed isFetching method to return YES during service and authorization delays
