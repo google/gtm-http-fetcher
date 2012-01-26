@@ -289,6 +289,23 @@ enum {
 
 void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 
+// Utility functions for applications self-identifying to servers via a
+// user-agent header
+
+// Make a proper app name without whitespace from the given string, removing
+// whitespace and other characters that may be special parsed marks of
+// the full user-agent string.
+NSString *GTMCleanedUserAgentString(NSString *str);
+
+// Make an identifier like "MacOSX/10.7.1" or "iPod_Touch/4.1"
+NSString *GTMSystemVersionString(void);
+
+// Make a generic name and version for the current application, like
+// com.example.MyApp/1.2.3 relying on the bundle identifier and the
+// CFBundleShortVersionString or CFBundleVersion.  If no bundle ID
+// is available, the process name preceded by "proc_" is used.
+NSString *GTMApplicationIdentifier(NSBundle *bundle);
+
 @class GTMHTTPFetcher;
 
 @protocol GTMCookieStorageProtocol <NSObject>

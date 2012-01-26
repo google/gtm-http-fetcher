@@ -34,6 +34,8 @@
 @implementation GTMHTTPFetcherService
 
 @synthesize maxRunningFetchersPerHost = maxRunningFetchersPerHost_,
+            userAgent = userAgent_,
+            timeout = timeout_,
             runLoopModes = runLoopModes_,
             credential = credential_,
             proxyCredential = proxyCredential_,
@@ -60,6 +62,7 @@
   [delayedHosts_ release];
   [runningHosts_ release];
   [fetchHistory_ release];
+  [userAgent_ release];
   [runLoopModes_ release];
   [credential_ release];
   [proxyCredential_ release];
@@ -71,7 +74,7 @@
 #pragma mark Generate a new fetcher
 
 - (id)fetcherWithRequest:(NSURLRequest *)request
-                          fetcherClass:(Class)fetcherClass {
+            fetcherClass:(Class)fetcherClass {
   GTMHTTPFetcher *fetcher = [fetcherClass fetcherWithRequest:request];
 
   fetcher.fetchHistory = self.fetchHistory;
@@ -82,6 +85,18 @@
   fetcher.shouldFetchInBackground = self.shouldFetchInBackground;
   fetcher.authorizer = self.authorizer;
   fetcher.service = self;
+
+  NSString *userAgent = self.userAgent;
+  if ([userAgent length] > 0
+      && [request valueForHTTPHeaderField:@"User-Agent"] == nil) {
+    [fetcher.mutableRequest setValue:userAgent
+                  forHTTPHeaderField:@"User-Agent"];
+  }
+
+  NSTimeInterval timeout = self.timeout;
+  if (timeout > 0.0) {
+    [fetcher.mutableRequest setTimeoutInterval:timeout];
+  }
 
   return fetcher;
 }

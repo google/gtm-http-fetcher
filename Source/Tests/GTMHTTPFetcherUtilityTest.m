@@ -24,7 +24,7 @@
 @interface GTMHTTPFetcher (GTMHTTPFetcherLoggingInternal)
 + (NSString *)snipSubtringOfString:(NSString *)originalStr
                 betweenStartString:(NSString *)startStr
-                         endString:(NSString *)endStr;  
+                         endString:(NSString *)endStr;
 @end
 
 
@@ -84,4 +84,36 @@
   STAssertEqualObjects(result, expected, @"realistic snip failure");
 }
 
+- (void)testGTMCleanedUserAgentString {
+  NSString *result = GTMCleanedUserAgentString(nil);
+  NSString *expected = nil;
+  STAssertEqualObjects(result, expected, nil);
+
+  result = GTMCleanedUserAgentString(@"");
+  expected = @"";
+  STAssertEqualObjects(result, expected, nil);
+
+  result = GTMCleanedUserAgentString(@"frog in tree/[1.2.3]");
+  expected = @"frog_in_tree1.2.3";
+  STAssertEqualObjects(result, expected, nil);
+
+  result = GTMCleanedUserAgentString(@"\\iPod ({Touch])\n\r");
+  expected = @"iPod_Touch";
+  STAssertEqualObjects(result, expected, nil);
+}
+
+- (void)testGTMSystemVersionString {
+#ifdef TARGET_OS_MAC && !TARGET_OS_IPHONE
+  NSString *result = GTMSystemVersionString();
+  STAssertTrue([result hasPrefix:@"MacOSX/"], nil);
+#else
+  STAssertTrue(NO, @"Add system version string test for this configuration");
+#endif
+}
+
+- (void)testGTMApplicationIdentifier {
+  NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+  NSString *result = GTMApplicationIdentifier(bundle);
+  STAssertEqualObjects(result, @"com.yourcompany.UnitTests/1.0", nil);
+}
 @end

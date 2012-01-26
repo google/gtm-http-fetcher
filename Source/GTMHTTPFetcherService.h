@@ -43,6 +43,8 @@
 
   GTMHTTPFetchHistory *fetchHistory_;
   NSArray *runLoopModes_;
+  NSString *userAgent_;
+  NSTimeInterval timeout_;
   NSURLCredential *credential_;       // username & password
   NSURLCredential *proxyCredential_;  // credential supplied to proxy servers
   NSInteger cookieStorageMethod_;
@@ -85,6 +87,8 @@
 
 // Properties to be applied to each fetcher;
 // see GTMHTTPFetcher.h for descriptions
+@property (copy) NSString *userAgent;
+@property (assign) NSTimeInterval timeout;
 @property (retain) NSArray *runLoopModes;
 @property (retain) NSURLCredential *credential;
 @property (retain) NSURLCredential *proxyCredential;

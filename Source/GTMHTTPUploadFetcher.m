@@ -376,9 +376,14 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   }
 
 #if DEBUG
-  // the initial response should have an empty body
+  // The initial response of the resumable upload protocol should have an
+  // empty body
+  //
+  // This assert typically happens because the upload create/edit link URL was
+  // not supplied with the request, and the server is thus expecting a non-
+  // resumable request/response.
   NSAssert([[self downloadedData] length] == 0,
-                    @"unexpected response data");
+                    @"unexpected response data (uploading to the wrong URL?)");
 #endif
 
   // we need to get the upload URL from the location header to continue

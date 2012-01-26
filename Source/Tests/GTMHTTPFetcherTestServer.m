@@ -27,6 +27,10 @@
 - (id)objectWithString:(NSString*)jsonrep error:(NSError**)error;
 @end
 
+@interface GTMNSJSONSerialization : NSObject
++ (id)JSONObjectWithData:(NSData *)data options:(NSUInteger)opt error:(NSError **)error;
+@end
+
 @implementation GTMHTTPFetcherTestServer
 
 - (id)initWithDocRoot:(NSString *)docRoot {
@@ -75,29 +79,39 @@
 }
 
 - (id)JSONFromData:(NSData *)data {
-  // TODO - replace with the system JSON parser
-  Class jsonClass = NSClassFromString(@"SBJsonParser");
-  if (!jsonClass) {
-    jsonClass = NSClassFromString(@"SBJSON");
-  }
-  if (!jsonClass) {
-    NSLog(@"JSON parser missing");
+  id obj = nil;
+  NSError *error = nil;
+  Class serializer = NSClassFromString(@"NSJSONSerialization");
+  if (serializer) {
+    const NSUInteger kOpts = (1UL << 0); // NSJSONReadingMutableContainers
+    obj = [serializer JSONObjectWithData:data
+                                 options:kOpts
+                                   error:&error];
   } else {
-    GTMSBJSON *parser = [[[jsonClass alloc] init] autorelease];
-    NSString *jsonStr = [[[NSString alloc] initWithData:data
-                                               encoding:NSUTF8StringEncoding] autorelease];
-    if (jsonStr) {
-      // convert from JSON string to NSObject
-      NSError *error = nil;
-      id obj = [parser objectWithString:jsonStr error:&error];
-      if (obj == nil) {
-        NSLog(@"JSON parse error: %@\n  for JSON string: %@",
-              error, jsonStr);
+    Class jsonClass = NSClassFromString(@"SBJsonParser");
+    if (!jsonClass) {
+      jsonClass = NSClassFromString(@"SBJSON");
+    }
+    if (!jsonClass) {
+      NSLog(@"JSON parser missing");
+    } else {
+      GTMSBJSON *parser = [[[jsonClass alloc] init] autorelease];
+      NSString *jsonStr = [[[NSString alloc] initWithData:data
+                                                 encoding:NSUTF8StringEncoding] autorelease];
+      if (jsonStr) {
+        // convert from JSON string to NSObject
+        obj = [parser objectWithString:jsonStr error:&error];
       }
-      return obj;
     }
   }
-  return nil;
+
+  if (obj == nil) {
+    NSString *jsonStr = [[[NSString alloc] initWithData:data
+                                               encoding:NSUTF8StringEncoding] autorelease];
+    NSLog(@"JSON parse error: %@\n  for JSON string: %@",
+          error, jsonStr);
+  }
+  return obj;
 }
 
 - (GTMHTTPResponseMessage *)httpServer:(GTMHTTPServer *)server

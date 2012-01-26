@@ -3,6 +3,13 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
+9-January-2011
+
+Fetcher now includes user-agent string utility functions
+
+Fetcher service has properties for request userAgent and timeout
+
+
 22-November-2011
 
 Fetchers now support a servicePriority property which affects the order in

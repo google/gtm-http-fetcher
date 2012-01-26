@@ -1549,10 +1549,6 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
 @end
 
-#ifdef GTM_FOUNDATION_ONLY
-#define Debugger()
-#endif
-
 void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...) {
 
   // verify that the object's selector is implemented with the proper
@@ -1567,7 +1563,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...) {
       NSLog(@"\"%@\" selector \"%@\" is unimplemented or misnamed",
                              NSStringFromClass([obj class]),
                              NSStringFromSelector(sel));
-      Debugger();
+      NSCAssert(0, @"callback selector unimplemented or misnamed");
     } else {
       const char *expectedArgType;
       unsigned int argCount = 2; // skip self and _cmd
@@ -1583,7 +1579,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...) {
             NSLog(@"\"%@\" selector \"%@\" argument %d should be type %s",
                   NSStringFromClass([obj class]),
                   NSStringFromSelector(sel), (argCount - 2), expectedArgType);
-            Debugger();
+            NSCAssert(0, @"callback selector argument type mistake");
           }
         }
         argCount++;
@@ -1594,11 +1590,138 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...) {
         NSLog( @"\"%@\" selector \"%@\" should have %d arguments",
                        NSStringFromClass([obj class]),
                        NSStringFromSelector(sel), (argCount - 2));
-        Debugger();
+        NSCAssert(0, @"callback selector arguments incorrect");
       }
     }
   }
 
   va_end(argList);
 #endif
+}
+
+NSString *GTMCleanedUserAgentString(NSString *str) {
+  // Reference http://www.w3.org/Protocols/rfc2616/rfc2616-sec2.html
+  // and http://www-archive.mozilla.org/build/user-agent-strings.html
+
+  if (str == nil) return nil;
+
+  NSMutableString *result = [NSMutableString stringWithString:str];
+
+  // Replace spaces with underscores
+  [result replaceOccurrencesOfString:@" "
+                          withString:@"_"
+                             options:0
+                               range:NSMakeRange(0, [result length])];
+
+  // Delete http token separators and remaining whitespace
+  static NSCharacterSet *charsToDelete = nil;
+  if (charsToDelete == nil) {
+    // Make a set of unwanted characters
+    NSString *const kSeparators = @"()<>@,;:\\\"/[]?={}";
+
+    NSMutableCharacterSet *mutableChars;
+    mutableChars = [[[NSCharacterSet whitespaceAndNewlineCharacterSet] mutableCopy] autorelease];
+    [mutableChars addCharactersInString:kSeparators];
+    charsToDelete = [mutableChars copy]; // hang on to an immutable copy
+  }
+
+  while (1) {
+    NSRange separatorRange = [result rangeOfCharacterFromSet:charsToDelete];
+    if (separatorRange.location == NSNotFound) break;
+
+    [result deleteCharactersInRange:separatorRange];
+  };
+
+  return result;
+}
+
+NSString *GTMSystemVersionString(void) {
+  NSString *systemString = @"";
+
+#if TARGET_OS_MAC && !TARGET_OS_IPHONE
+  // Mac build
+  SInt32 systemMajor = 0, systemMinor = 0, systemRelease = 0;
+  (void) Gestalt(gestaltSystemVersionMajor, &systemMajor);
+  (void) Gestalt(gestaltSystemVersionMinor, &systemMinor);
+  (void) Gestalt(gestaltSystemVersionBugFix, &systemRelease);
+
+  systemString = [NSString stringWithFormat:@"MacOSX/%d.%d.%d",
+                  (int)systemMajor, (int)systemMinor, (int)systemRelease];
+
+#elif TARGET_OS_IPHONE
+  // Compiling against the iPhone SDK
+
+  static NSString *savedSystemString = nil;
+  if (savedSystemString == nil) {
+    // Avoid the slowness of calling currentDevice repeatedly on the iPhone
+    UIDevice* currentDevice = [UIDevice currentDevice];
+
+    NSString *rawModel = [currentDevice model];
+    NSString *model = GTMCleanedUserAgentString(rawModel);
+
+    NSString *systemVersion = [currentDevice systemVersion];
+
+    savedSystemString = [[NSString alloc] initWithFormat:@"%@/%@",
+                         model, systemVersion]; // "iPod_Touch/2.2"
+  }
+  systemString = savedSystemString;
+
+#elif (GTL_IPHONE || GDATA_IPHONE)
+  // Compiling iOS libraries against the Mac SDK
+  systemString = @"iPhone/x.x";
+
+#elif defined(_SYS_UTSNAME_H)
+  // Foundation-only build
+  struct utsname unameRecord;
+  uname(&unameRecord);
+
+  systemString = [NSString stringWithFormat:@"%s/%s",
+                  unameRecord.sysname, unameRecord.release]; // "Darwin/8.11.1"
+#endif
+
+  return systemString;
+}
+
+// Return a generic name and version for the current application; this avoids
+// anonymous server transactions.
+NSString *GTMApplicationIdentifier(NSBundle *bundle) {
+  static NSString *sAppID = nil;
+  if (sAppID != nil) return sAppID;
+
+  // If there's a bundle ID, use that; otherwise, use the process name
+  if (bundle == nil) {
+    bundle = [NSBundle mainBundle];
+  }
+
+  NSString *identifier;
+  NSString *bundleID = [bundle bundleIdentifier];
+  if ([bundleID length] > 0) {
+    identifier = bundleID;
+  } else {
+    // Fall back on the procname, prefixed by "proc" to flag that it's
+    // autogenerated and perhaps unreliable
+    NSString *procName = [[NSProcessInfo processInfo] processName];
+    identifier = [NSString stringWithFormat:@"proc_%@", procName];
+  }
+
+  // Clean up whitespace and special characters
+  identifier = GTMCleanedUserAgentString(identifier);
+
+  // If there's a version number, append that
+  NSString *version = [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+  if ([version length] == 0) {
+    version = [bundle objectForInfoDictionaryKey:@"CFBundleVersion"];
+  }
+
+  // Clean up whitespace and special characters
+  version = GTMCleanedUserAgentString(version);
+
+  // Glue the two together (cleanup done above or else cleanup would strip the
+  // slash)
+  if ([version length] > 0) {
+    identifier = [identifier stringByAppendingFormat:@"/%@", version];
+  }
+
+  sAppID = [identifier copy];
+  return sAppID;
 }

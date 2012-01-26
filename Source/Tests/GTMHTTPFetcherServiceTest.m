@@ -99,9 +99,14 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   // 1 should fail; the rest should succeeed.
   const NSUInteger kMaxRunningFetchersPerHost = 2;
 
+  NSString *const kUserAgent = @"ServiceTest-UA";
+  const NSTimeInterval kTimeout = 55;
+
   GTMHTTPFetcherService *service = [[[GTMHTTPFetcherService alloc] init] autorelease];
   service.maxRunningFetchersPerHost = kMaxRunningFetchersPerHost;
   service.fetchHistory.shouldRememberETags = NO;
+  service.userAgent = kUserAgent;
+  service.timeout = kTimeout;
 
   // Make URLs for a valid fetch, a fetch that returns a status error,
   // and a valid fetch with a different host
@@ -149,7 +154,8 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
                   [running addObject:fetcher];
                   [pending removeObject:fetcher];
 
-                  NSString *host = [[[fetcher mutableRequest] URL] host];
+                  NSMutableURLRequest *fetcherReq = [fetcher mutableRequest];
+                  NSString *host = [[fetcherReq URL] host];
                   NSUInteger numberRunning = FetchersPerHost(running, host);
                   STAssertTrue(numberRunning > 0, @"count error");
                   STAssertTrue(numberRunning <= kMaxRunningFetchersPerHost,
@@ -166,6 +172,10 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
                                  [running count], @"running off");
                   STAssertEquals([service numberOfDelayedFetchers],
                                  [pending count], @"delayed off");
+
+                  NSString *agent = [fetcherReq valueForHTTPHeaderField:@"User-Agent"];
+                  STAssertEqualObjects(agent, kUserAgent, nil);
+                  STAssertEquals([fetcherReq timeoutInterval], kTimeout, nil);
                 }];
 
     // Fetcher stopped notification
