@@ -45,7 +45,7 @@
 - (id)objectWithString:(NSString*)jsonrep error:(NSError**)error;
 @end
 
-@interface GTMHTTPFetcher ()
+@interface GTMHTTPFetcher (GTMHTTPFetcherLoggingUtilities)
 + (NSString *)headersStringForDictionary:(NSDictionary *)dict;
 
 - (void)inputStream:(GTMReadMonitorInputStream *)stream
@@ -819,6 +819,10 @@ static NSString* gLoggingProcessName = nil;
 
   return YES;
 }
+
+@end
+
+@implementation GTMHTTPFetcher (GTMHTTPFetcherLoggingUtilities)
 
 - (void)inputStream:(GTMReadMonitorInputStream *)stream
      readIntoBuffer:(void *)buffer
