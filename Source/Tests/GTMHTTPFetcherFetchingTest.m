@@ -407,6 +407,12 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
 
   STAssertNotNil(fetchedData_, @"fetch lacked data with error info");
   STAssertNotNil(fetcherError_, @"expected status error");
+  NSData *statusData = [[fetcherError_ userInfo] objectForKey:kGTMHTTPFetcherStatusDataKey];
+  NSString *dataStr = [[[NSString alloc] initWithData:statusData
+                                             encoding:NSUTF8StringEncoding] autorelease];
+  NSString *expectedStr = @"{ \"error\" : { \"message\" : \"Server Status 400\", \"code\" : 400 } }";
+  STAssertEqualObjects(dataStr, expectedStr, @"expected status data");
+  
   STAssertEquals(fetchedStatus_, 400,
                  @"unexpected status, error=%@", fetcherError_);
 
@@ -1168,6 +1174,12 @@ totalBytesExpectedToSend:expectedBytes];
                  @"unexpected next retry interval (expected %f, was %f)",
                  pow(2.0, [fetcher retryCount]),
                  [fetcher nextRetryInterval]);
+
+  NSData *statusData = [[error userInfo] objectForKey:kGTMHTTPFetcherStatusDataKey];
+  NSString *dataStr = [[[NSString alloc] initWithData:statusData
+                                             encoding:NSUTF8StringEncoding] autorelease];
+  NSString *expectedStr = @"{ \"error\" : { \"message\" : \"Server Status 503\", \"code\" : 503 } }";
+  STAssertEqualObjects(dataStr, expectedStr, nil);
 
   return shouldRetry;
 }

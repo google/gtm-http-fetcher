@@ -1095,9 +1095,14 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       [self beginRetryTimer];
       shouldStopFetching = NO;
     } else {
+      NSDictionary *userInfo = nil;
+      if ([downloadedData_ length] > 0) {
+        userInfo = [NSDictionary dictionaryWithObject:downloadedData_
+                                               forKey:kGTMHTTPFetcherStatusDataKey];
+      }
       error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
                                   code:status
-                              userInfo:nil];
+                              userInfo:userInfo];
     }
   }
 
@@ -1225,9 +1230,14 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
     // Check if this is a retryable error
     if (error == nil) {
       // Make an error for the status
+      NSDictionary *userInfo = nil;
+      if ([downloadedData_ length] > 0) {
+        userInfo = [NSDictionary dictionaryWithObject:downloadedData_
+                                               forKey:kGTMHTTPFetcherStatusDataKey];
+      }
       error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
                                   code:status
-                              userInfo:nil];
+                              userInfo:userInfo];
     }
 
     willRetry = shouldRetryForAuthRefresh || [self isRetryError:error];
