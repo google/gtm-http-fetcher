@@ -22,67 +22,69 @@
 @end
 
 @interface GTMHTTPFetcher (GTMHTTPFetcherLoggingInternal)
-+ (NSString *)snipSubtringOfString:(NSString *)originalStr
-                betweenStartString:(NSString *)startStr
-                         endString:(NSString *)endStr;
++ (NSString *)snipSubstringOfString:(NSString *)originalStr
+                 betweenStartString:(NSString *)startStr
+                          endString:(NSString *)endStr;
 @end
 
 
 @implementation GTMHTTPFetcherUtilityTest
 
+#if !STRIP_GTM_FETCH_LOGGING
 - (void)testLogSnipping {
   // enpty string
   NSString *orig = @"";
   NSString *expected = orig;
-  NSString *result = [GTMHTTPFetcher snipSubtringOfString:orig
-                                       betweenStartString:@"jkl"
-                                                endString:@"mno"];
+  NSString *result = [GTMHTTPFetcher snipSubstringOfString:orig
+                                        betweenStartString:@"jkl"
+                                                 endString:@"mno"];
   STAssertEqualObjects(result, expected, @"simple snip to end failure");
 
   // snip the middle
   orig = @"abcdefg";
   expected = @"abcd_snip_fg";
-  result = [GTMHTTPFetcher snipSubtringOfString:orig
-                             betweenStartString:@"abcd"
-                                      endString:@"fg"];
+  result = [GTMHTTPFetcher snipSubstringOfString:orig
+                              betweenStartString:@"abcd"
+                                       endString:@"fg"];
   STAssertEqualObjects(result, expected, @"simple snip in the middle failure");
 
   // snip to the end
   orig = @"abcdefg";
   expected = @"abcd_snip_";
-  result = [GTMHTTPFetcher snipSubtringOfString:orig
-                             betweenStartString:@"abcd"
-                                      endString:@"xyz"];
+  result = [GTMHTTPFetcher snipSubstringOfString:orig
+                              betweenStartString:@"abcd"
+                                       endString:@"xyz"];
   STAssertEqualObjects(result, expected, @"simple snip to end failure");
 
   // start string not found, so nothing should be snipped
   orig = @"abcdefg";
   expected = orig;
-  result = [GTMHTTPFetcher snipSubtringOfString:orig
-                             betweenStartString:@"jkl"
-                                      endString:@"mno"];
+  result = [GTMHTTPFetcher snipSubstringOfString:orig
+                              betweenStartString:@"jkl"
+                                       endString:@"mno"];
   STAssertEqualObjects(result, expected, @"simple snip to end failure");
 
   // nothing between start and end
   orig = @"abcdefg";
   expected = @"abcd_snip_efg";
-  result = [GTMHTTPFetcher snipSubtringOfString:orig
-                             betweenStartString:@"abcd"
-                                      endString:@"efg"];
+  result = [GTMHTTPFetcher snipSubstringOfString:orig
+                              betweenStartString:@"abcd"
+                                       endString:@"efg"];
   STAssertEqualObjects(result, expected, @"snip of empty string failure");
 
   // snip like in OAuth
   orig = @"OAuth oauth_consumer_key=\"example.net\", "
-    "oauth_token=\"1%2FpXi_-mBSegSbB-m9HprlwlxF6NF7IL7_9PDZok\", "
-    "oauth_signature=\"blP%2BG72aSQ2XadLLTk%2BNzUV6Wes%3D\"";
+  "oauth_token=\"1%2FpXi_-mBSegSbB-m9HprlwlxF6NF7IL7_9PDZok\", "
+  "oauth_signature=\"blP%2BG72aSQ2XadLLTk%2BNzUV6Wes%3D\"";
   expected = @"OAuth oauth_consumer_key=\"example.net\", "
-    "oauth_token=\"_snip_\", "
-    "oauth_signature=\"blP%2BG72aSQ2XadLLTk%2BNzUV6Wes%3D\"";
-  result = [GTMHTTPFetcher snipSubtringOfString:orig
-                             betweenStartString:@"oauth_token=\""
-                                      endString:@"\""];
+  "oauth_token=\"_snip_\", "
+  "oauth_signature=\"blP%2BG72aSQ2XadLLTk%2BNzUV6Wes%3D\"";
+  result = [GTMHTTPFetcher snipSubstringOfString:orig
+                              betweenStartString:@"oauth_token=\""
+                                       endString:@"\""];
   STAssertEqualObjects(result, expected, @"realistic snip failure");
 }
+#endif
 
 - (void)testGTMCleanedUserAgentString {
   NSString *result = GTMCleanedUserAgentString(nil);
@@ -103,7 +105,7 @@
 }
 
 - (void)testGTMSystemVersionString {
-#ifdef TARGET_OS_MAC && !TARGET_OS_IPHONE
+#if TARGET_OS_MAC && !TARGET_OS_IPHONE
   NSString *result = GTMSystemVersionString();
   STAssertTrue([result hasPrefix:@"MacOSX/"], nil);
 #else

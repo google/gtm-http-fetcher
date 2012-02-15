@@ -59,9 +59,9 @@
 + (BOOL)createSymbolicLinkAtPath:(NSString *)newPath
              withDestinationPath:(NSString *)targetPath;
 
-+ (NSString *)snipSubtringOfString:(NSString *)originalStr
-                betweenStartString:(NSString *)startStr
-                         endString:(NSString *)endStr;
++ (NSString *)snipSubstringOfString:(NSString *)originalStr
+                 betweenStartString:(NSString *)startStr
+                          endString:(NSString *)endStr;
 
 + (id)JSONObjectWithData:(NSData *)data;
 + (id)stringWithJSONObject:(id)obj;
@@ -562,7 +562,7 @@ static NSString* gLoggingProcessName = nil;
   // write the request post data, toggleable
   NSData *postData;
   if (loggedStreamData_) {
-    postData = loggedStreamData_; 
+    postData = loggedStreamData_;
   } else if (postData_) {
     postData = postData_;
   } else {
@@ -581,18 +581,18 @@ static NSString* gLoggingProcessName = nil;
                                  contentType:postType];
     if (postDataStr) {
       // remove OAuth 2 client secret and refresh token
-      postDataStr = [[self class] snipSubtringOfString:postDataStr
-                                    betweenStartString:@"client_secret="
-                                             endString:@"&"];
+      postDataStr = [[self class] snipSubstringOfString:postDataStr
+                                     betweenStartString:@"client_secret="
+                                              endString:@"&"];
 
-      postDataStr = [[self class] snipSubtringOfString:postDataStr
-                                    betweenStartString:@"refresh_token="
-                                             endString:@"&"];
+      postDataStr = [[self class] snipSubstringOfString:postDataStr
+                                     betweenStartString:@"refresh_token="
+                                              endString:@"&"];
 
       // remove ClientLogin password
-      postDataStr = [[self class] snipSubtringOfString:postDataStr
-                                    betweenStartString:@"&Passwd="
-                                             endString:@"&"];
+      postDataStr = [[self class] snipSubstringOfString:postDataStr
+                                     betweenStartString:@"&Passwd="
+                                              endString:@"&"];
     }
   } else {
     // no post data
@@ -866,11 +866,11 @@ static NSString* gLoggingProcessName = nil;
   return (result == 0);
 }
 
-#pragma mark Formatting utilities
+#pragma mark Fomatting Utilities
 
-+ (NSString *)snipSubtringOfString:(NSString *)originalStr
-                betweenStartString:(NSString *)startStr
-                         endString:(NSString *)endStr {
++ (NSString *)snipSubstringOfString:(NSString *)originalStr
+                 betweenStartString:(NSString *)startStr
+                          endString:(NSString *)endStr {
 
   if (originalStr == nil) return nil;
 
@@ -917,22 +917,22 @@ static NSString* gLoggingProcessName = nil;
     NSString *value = [dict valueForKey:key];
     if ([key isEqual:@"Authorization"]) {
       // Remove OAuth 1 token
-      value = [[self class] snipSubtringOfString:value
-                              betweenStartString:@"oauth_token=\""
-                                       endString:@"\""];
+      value = [[self class] snipSubstringOfString:value
+                               betweenStartString:@"oauth_token=\""
+                                        endString:@"\""];
 
       // Remove OAuth 2 bearer token (draft 16, and older form)
-      value = [[self class] snipSubtringOfString:value
-                              betweenStartString:@"Bearer "
-                                       endString:@"\n"];
-      value = [[self class] snipSubtringOfString:value
-                              betweenStartString:@"OAuth "
-                                       endString:@"\n"];
+      value = [[self class] snipSubstringOfString:value
+                               betweenStartString:@"Bearer "
+                                        endString:@"\n"];
+      value = [[self class] snipSubstringOfString:value
+                               betweenStartString:@"OAuth "
+                                        endString:@"\n"];
 
       // Remove Google ClientLogin
-      value = [[self class] snipSubtringOfString:value
-                              betweenStartString:@"GoogleLogin auth="
-                                       endString:@"\n"];
+      value = [[self class] snipSubstringOfString:value
+                               betweenStartString:@"GoogleLogin auth="
+                                        endString:@"\n"];
     }
     [str appendFormat:@"  %@: %@\n", key, value];
   }
