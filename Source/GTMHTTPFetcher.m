@@ -1437,6 +1437,9 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
     if (method == kGTMHTTPFetcherCookieStorageMethodStatic) {
       // store cookies in the static array
+      NSAssert(gGTMFetcherStaticCookieStorage != nil,
+               @"cookie storage requires GTMHTTPFetchHistory");
+
       self.cookieStorage = gGTMFetcherStaticCookieStorage;
     } else if (method == kGTMHTTPFetcherCookieStorageMethodFetchHistory) {
       // store cookies in the fetch history

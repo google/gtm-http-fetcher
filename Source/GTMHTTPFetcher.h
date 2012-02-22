@@ -526,7 +526,8 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 //  - (void)myFetcher:(GTMHTTPFetcher *)fetcher
 //       receivedData:(NSData *)dataReceivedSoFar;
 //
-// The dataReceived argument will be nil when downloading to a file handle.
+// The dataReceived argument will be nil when downloading to a path or to a
+// file handle.
 //
 // Applications should not use this method to accumulate the received data;
 // the callback method or block supplied to the beginFetch call will have
@@ -539,7 +540,8 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // editor
 @property (copy) void (^sentDataBlock)(NSInteger bytesSent, NSInteger totalBytesSent, NSInteger bytesExpectedToSend);
 
-// The dataReceived argument will be nil when downloading to a file handle
+// The dataReceived argument will be nil when downloading to a path or to
+// a file handle
 @property (copy) void (^receivedDataBlock)(NSData *dataReceivedSoFar);
 #endif
 
@@ -594,6 +596,8 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // finishedSEL has a signature like:
 //   - (void)fetcher:(GTMHTTPFetcher *)fetcher finishedWithData:(NSData *)data error:(NSError *)error;
 //
+// If the application has specified a downloadPath or downloadFileHandle
+// for the fetcher, the data parameter passed to the callback will be nil.
 
 - (BOOL)beginFetchWithDelegate:(id)delegate
              didFinishSelector:(SEL)finishedSEL;
