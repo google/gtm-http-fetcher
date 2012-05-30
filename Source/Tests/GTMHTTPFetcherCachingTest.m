@@ -218,7 +218,7 @@
   //
   // expirations have to be in the future or the cookie won't get stored
   NSTimeInterval kExpirationInterval = 0.1;
-  NSDate *expiredDate = [NSDate dateWithTimeIntervalSinceNow:0.1];
+  NSDate *expiredDate = [NSDate dateWithTimeIntervalSinceNow:kExpirationInterval];
   NSDictionary *cookie2aProps = [NSDictionary dictionaryWithObjectsAndKeys:
                                 @"FALSE", NSHTTPCookieDiscard,
                                 @".example.com", NSHTTPCookieDomain,
@@ -248,18 +248,23 @@
   STAssertEquals((int)[foundCookies count], 1, @"subdomain 2a retrieval");
 
   NSHTTPCookie *foundCookie = [foundCookies lastObject];
-  STAssertEquals([foundCookie value], [testCookie2a value],
+  STAssertEqualObjects([foundCookie value], [testCookie2a value],
                  @"cookie replacement");
 
   // wait for cookie 2a to expire, then remove expired cookies
-  [NSThread sleepForTimeInterval:(2 * kExpirationInterval)];
-  [cookieStorage removeExpiredCookies];
-
-  foundCookies = [cookieStorage cookiesForURL:subdomainURL];
-  STAssertEquals((int)[foundCookies count], 0, @"pruned removal");
-
-  foundCookies = [cookieStorage cookiesForURL:fullURL];
-  STAssertEquals((int)[foundCookies count], 1, @"pruned removal remaining");
+  //
+  // 30-May-2012: Apparently, on Mac OS X 10.7.4, the expiration is no
+  // longer stored, even for version 0 cookies.
+  //
+  //  [NSThread sleepForTimeInterval:(2 * kExpirationInterval)];
+  //  [cookieStorage removeExpiredCookies];
+  //
+  //  foundCookies = [cookieStorage cookiesForURL:subdomainURL];
+  //  STAssertEquals((int)[foundCookies count], 0, @"pruned removal");
+  //
+  //  foundCookies = [cookieStorage cookiesForURL:fullURL];
+  //  STAssertEquals((int)[foundCookies count], 1, @"pruned removal remaining");
+  STAssertNil([testCookie2a expiresDate], nil);
 
   // remove all cookies
   [cookieStorage removeAllCookies];
