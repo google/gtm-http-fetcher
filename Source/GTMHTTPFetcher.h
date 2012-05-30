@@ -287,6 +287,10 @@ enum {
   kGTMHTTPFetcherCookieStorageMethodNone = 3
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 
 // Utility functions for applications self-identifying to servers via a
@@ -305,6 +309,10 @@ NSString *GTMSystemVersionString(void);
 // CFBundleShortVersionString or CFBundleVersion.  If no bundle ID
 // is available, the process name preceded by "proc_" is used.
 NSString *GTMApplicationIdentifier(NSBundle *bundle);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 @class GTMHTTPFetcher;
 
@@ -412,7 +420,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
   id <GTMHTTPFetchHistoryProtocol> fetchHistory_; // if supplied by the caller, used for Last-Modified-Since checks and cookies
   NSInteger cookieStorageMethod_;   // constant from above
   id <GTMCookieStorageProtocol> cookieStorage_;
-  
+
   id <GTMFetcherAuthorizationProtocol> authorizer_;
 
   // the service object that created and monitors this fetcher, if any
