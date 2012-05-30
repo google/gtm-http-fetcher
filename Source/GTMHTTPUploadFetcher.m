@@ -28,6 +28,7 @@ static NSUInteger const kQueryServerForOffset = NSUIntegerMax;
 @property (readwrite, retain) NSData *downloadedData;
 - (void)releaseCallbacks;
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection;
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
 @end
 
 @interface GTMHTTPUploadFetcher ()
@@ -352,6 +353,18 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
 #endif
 
   [self releaseCallbacks];
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+  // handle failure of the initial fetch as a simple fetcher failure, including
+  // calling the delegate, and allowing retry to happen if appropriate
+  SEL prevSel = finishedSel_;  // should be null
+  finishedSel_ = delegateFinishedSEL_;
+  [super connection:connection didFailWithError:error];
+
+  // If retry later happens and succeeds, it shouldn't message the delegate
+  // since we'll continue to chunk uploads.
+  finishedSel_ = prevSel;
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
