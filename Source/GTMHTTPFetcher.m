@@ -1216,6 +1216,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       if (hasPrimed) {
         shouldRetryForAuthRefresh = YES;
         hasAttemptedAuthRefresh_ = YES;
+        [request_ setValue:nil forHTTPHeaderField:@"Authorization"];
       }
     }
   }

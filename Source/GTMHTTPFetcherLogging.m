@@ -570,8 +570,7 @@ static NSString* gLoggingProcessName = nil;
     [outputHTML appendFormat:@"&nbsp;&nbsp; headers: %d  %@<br>",
      (int)numberOfRequestHeaders, headerDetails];
   } else {
-    [outputHTML appendFormat:@"&nbsp;&nbsp; headers: none<br>",
-     (int)numberOfRequestHeaders];
+    [outputHTML appendFormat:@"&nbsp;&nbsp; headers: none<br>"];
   }
 
   // write the request post data, toggleable
@@ -740,6 +739,19 @@ static NSString* gLoggingProcessName = nil;
     if (responseDataLength > 0) {
       if (responseDataStr != nil) {
         [copyable appendFormat:@"%@\n", responseDataStr];
+      } else if (status >= 400 && [temporaryDownloadPath_ length] > 0) {
+        // Try to read in the saved data, which is probably a server error
+        // message
+        NSStringEncoding enc;
+        responseDataStr = [NSString stringWithContentsOfFile:temporaryDownloadPath_
+                                                usedEncoding:&enc
+                                                       error:NULL];
+        if ([responseDataStr length] > 0) {
+          [copyable appendFormat:@"%@\n", responseDataStr];
+        } else {
+          [copyable appendFormat:@"<<%u bytes to file>>\n",
+           (unsigned int) responseDataLength];
+        }
       } else {
         // Even though it's redundant, we'll put in text to indicate that all
         // the bytes are binary
