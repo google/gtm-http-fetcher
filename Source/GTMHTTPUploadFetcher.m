@@ -39,7 +39,7 @@ static NSUInteger const kQueryServerForOffset = NSUIntegerMax;
       uploadFileHandle:(NSFileHandle *)fileHandle
         uploadMIMEType:(NSString *)uploadMIMEType
              chunkSize:(NSUInteger)chunkSize;
-  
+
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset;
 - (void)uploadNextChunkWithOffset:(NSUInteger)offset
                 fetcherProperties:(NSMutableDictionary *)props;
@@ -460,14 +460,15 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
     // resuming, so we'll initially send an empty data block and wait for the
     // server to tell us where the current offset really is
     chunkData = [NSData data];
-    rangeStr = [NSString stringWithFormat:@"bytes */%lu", dataLen];
+    rangeStr = [NSString stringWithFormat:@"bytes */%llu",
+                (unsigned long long)dataLen];
     lengthStr = @"0";
     offset = 0;
   } else {
     // uploading the next data chunk
 #if DEBUG
-    NSAssert2(offset < dataLen, @"offset %lu exceeds data length %lu",
-              offset, dataLen);
+    NSAssert2(offset < dataLen, @"offset %llu exceeds data length %llu",
+              (unsigned long long)offset, (unsigned long long)dataLen);
 #endif
 
     NSUInteger thisChunkSize = chunkSize;
@@ -486,9 +487,12 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
     chunkData = [self uploadSubdataWithOffset:offset
                                        length:thisChunkSize];
 
-    rangeStr = [NSString stringWithFormat:@"bytes %lu-%lu/%lu",
-                          offset, offset + thisChunkSize - 1, dataLen];
-    lengthStr = [NSString stringWithFormat:@"%lu", thisChunkSize];
+    rangeStr = [NSString stringWithFormat:@"bytes %llu-%llu/%llu",
+                (unsigned long long)offset,
+                (unsigned long long)(offset + thisChunkSize - 1),
+                (unsigned long long)dataLen];
+    lengthStr = [NSString stringWithFormat:@"%llu",
+                 (unsigned long long)thisChunkSize];
   }
 
   // track the current offset for progress reporting
@@ -638,7 +642,7 @@ totalBytesExpectedToSend:0];
     [self invokeFinalCallbacksWithData:data
                                  error:error
               shouldInvalidateLocation:YES];
-    
+
     [self destroyChunkFetcher];
   }
 }
@@ -712,12 +716,12 @@ totalBytesExpectedToSend:0];
                                 willRetry:willRetry
                                     error:error];
   }
-  
+
 #if NS_BLOCKS_AVAILABLE
   if (retryBlock_) {
     willRetry = retryBlock_(willRetry, error);
   }
-#endif  
+#endif
 
   if (willRetry) {
     // change the request being retried into a query to the server to
@@ -725,7 +729,8 @@ totalBytesExpectedToSend:0];
     NSMutableURLRequest *chunkRequest = [chunkFetcher mutableRequest];
 
     NSUInteger dataLen = [self fullUploadLength];
-    NSString *rangeStr = [NSString stringWithFormat:@"bytes */%lu", dataLen];
+    NSString *rangeStr = [NSString stringWithFormat:@"bytes */%llu",
+                          (unsigned long long)dataLen];
 
     [chunkRequest setValue:rangeStr forHTTPHeaderField:@"Content-Range"];
     [chunkRequest setValue:@"0" forHTTPHeaderField:@"Content-Length"];
@@ -754,28 +759,28 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
   // the actual total bytes sent include the initial XML sent, plus the
   // offset into the batched data prior to this fetcher
   totalBytesSent += initialBodySent_ + currentOffset_;
-  
+
   // the total bytes expected include the initial XML and the full chunked
   // data, independent of how big this fetcher's chunk is
   totalBytesExpected = initialBodyLength_ + [self fullUploadLength];
-  
+
   if (delegate_ && delegateSentDataSEL_) {
     // ensure the chunk fetcher survives the callback in case the user pauses
     // the upload process
     [[chunkFetcher retain] autorelease];
-    
+
     [self invokeSentDataCallback:delegateSentDataSEL_
                           target:delegate_
                  didSendBodyData:bytesSent
                totalBytesWritten:totalBytesSent
        totalBytesExpectedToWrite:totalBytesExpected];
   }
-  
+
 #if NS_BLOCKS_AVAILABLE
   if (sentDataBlock_) {
     sentDataBlock_(bytesSent, totalBytesSent, totalBytesExpected);
   }
-#endif  
+#endif
 }
 
 #pragma mark -
