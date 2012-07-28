@@ -20,6 +20,13 @@
 
 #import "GTMHTTPFetcherLogging.h"
 
+// Sensitive credential strings are replaced in logs with _snip_
+//
+// Apps that must see the contents of sensitive tokens can set this to 1
+#ifndef SKIP_GTM_FETCH_LOGGING_SNIPPING
+#define SKIP_GTM_FETCH_LOGGING_SNIPPING 0
+#endif
+
 // If GTMReadMonitorInputStream is available, it can be used for
 // capturing uploaded streams of data
 //
@@ -33,10 +40,13 @@
 @end
 
 // If GTMNSJSONSerialization is available, it is used for formatting JSON
+#if (TARGET_OS_MAC && !TARGET_OS_IPHONE && (MAC_OS_X_VERSION_MAX_ALLOWED < 1070)) || \
+  (TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MAX_ALLOWED < 50000))
 @interface GTMNSJSONSerialization : NSObject
 + (NSData *)dataWithJSONObject:(id)obj options:(NSUInteger)opt error:(NSError **)error;
 + (id)JSONObjectWithData:(NSData *)data options:(NSUInteger)opt error:(NSError **)error;
 @end
+#endif
 
 // Otherwise, if SBJSON is available, it is used for formatting JSON
 @interface GTMFetcherSBJSON
@@ -902,7 +912,9 @@ static NSString* gLoggingProcessName = nil;
 + (NSString *)snipSubstringOfString:(NSString *)originalStr
                  betweenStartString:(NSString *)startStr
                           endString:(NSString *)endStr {
-
+#if SKIP_GTM_FETCH_LOGGING_SNIPPING
+  return originalStr;
+#else
   if (originalStr == nil) return nil;
 
   // Find the start string, and replace everything between it
@@ -931,6 +943,7 @@ static NSString* gLoggingProcessName = nil;
   NSString *result = [originalStr stringByReplacingCharactersInRange:replaceRange
                                                           withString:@"_snip_"];
   return result;
+#endif // SKIP_GTM_FETCH_LOGGING_SNIPPING
 }
 
 + (NSString *)headersStringForDictionary:(NSDictionary *)dict {
