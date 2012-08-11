@@ -1654,14 +1654,19 @@ NSString *GTMSystemVersionString(void) {
 
 #if TARGET_OS_MAC && !TARGET_OS_IPHONE
   // Mac build
-  SInt32 systemMajor = 0, systemMinor = 0, systemRelease = 0;
-  (void) Gestalt(gestaltSystemVersionMajor, &systemMajor);
-  (void) Gestalt(gestaltSystemVersionMinor, &systemMinor);
-  (void) Gestalt(gestaltSystemVersionBugFix, &systemRelease);
-
-  systemString = [NSString stringWithFormat:@"MacOSX/%d.%d.%d",
-                  (int)systemMajor, (int)systemMinor, (int)systemRelease];
-
+  static NSString *savedSystemString = nil;
+  if (savedSystemString == nil) {
+    // With Gestalt inexplicably deprecated in 10.8, we're reduced to reading
+    // the system plist file.
+    NSString *const kPath = @"/System/Library/CoreServices/SystemVersion.plist";
+    NSDictionary *plist = [NSDictionary dictionaryWithContentsOfFile:kPath];
+    NSString *versString = [plist objectForKey:@"ProductVersion"];
+    if ([versString length] == 0) {
+      versString = @"10.?.?";
+    }
+    savedSystemString = [[NSString alloc] initWithFormat:@"MacOSX/%@", versString];
+  }
+  systemString = savedSystemString;
 #elif TARGET_OS_IPHONE
   // Compiling against the iPhone SDK
 
