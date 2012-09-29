@@ -3,7 +3,14 @@ GTM HTTP Fetcher Release Notes
 Project site:     http://code.google.com/p/gtm-http-fetcher/
 Discussion group: http://groups.google.com/group/google-toolbox-for-mac
 
-9-January-2011
+28-September-2012
+
+Added delegateQueue support to fetcher and fetcher service, allowing fetches
+to begin on a thread without a run loop and to invoke callbacks on the main
+thread or a background thread, beginning with iOS 6 and Mac OS X 10.7.
+
+
+9-January-2012
 
 Fetcher now includes user-agent string utility functions
 

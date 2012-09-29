@@ -196,13 +196,13 @@ static BOOL memsrch(const unsigned char* needle, NSUInteger needle_len,
     if (!didCollide) break; // we're fine, no more attempts needed
 
     // try again with a random number appended
-    boundary = [NSString stringWithFormat:@"%@_%08ux", kBaseBoundary,
+    boundary = [NSString stringWithFormat:@"%@_%08x", kBaseBoundary,
                 [self random]];
   }
 
   if (didCollide) {
     // fallback... two random numbers
-    boundary = [NSString stringWithFormat:@"%08ux_tedborg_%08ux",
+    boundary = [NSString stringWithFormat:@"%08x_tedborg_%08x",
                                           [self random], [self random]];
   }
 

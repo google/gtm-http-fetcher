@@ -527,6 +527,7 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   GTMHTTPFetcher *chunkFetcher;
 
   chunkFetcher = [GTMHTTPFetcher fetcherWithRequest:chunkRequest];
+  [chunkFetcher setDelegateQueue:[self delegateQueue]];
   [chunkFetcher setRunLoopModes:[self runLoopModes]];
 
   // if the upload fetcher has a comment, use the same comment for chunks

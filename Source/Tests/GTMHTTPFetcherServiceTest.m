@@ -155,7 +155,8 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
                   [pending removeObject:fetcher];
 
                   NSMutableURLRequest *fetcherReq = [fetcher mutableRequest];
-                  NSString *host = [[fetcherReq URL] host];
+                  NSURL *fetcherReqURL = [fetcherReq URL];
+                  NSString *host = [fetcherReqURL host];
                   NSUInteger numberRunning = FetchersPerHost(running, host);
                   STAssertTrue(numberRunning > 0, @"count error");
                   STAssertTrue(numberRunning <= kMaxRunningFetchersPerHost,
@@ -172,6 +173,19 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
                                  [running count], @"running off");
                   STAssertEquals([service numberOfDelayedFetchers],
                                  [pending count], @"delayed off");
+
+                  NSArray *matches =
+                    [service issuedFetchersWithRequestURL:fetcherReqURL];
+                  NSUInteger idx = NSNotFound;
+                  if (matches) {
+                    idx = [matches indexOfObjectIdenticalTo:fetcher];
+                  }
+                  STAssertTrue(idx != NSNotFound, @"Missing %@ in %@",
+                               fetcherReqURL, matches);
+                  NSURL *fakeURL =
+                    [NSURL URLWithString:@"http://example.com/bad"];
+                  matches = [service issuedFetchersWithRequestURL:fakeURL];
+                  STAssertEquals([matches count], (NSUInteger)0, nil);
 
                   NSString *agent = [fetcherReq valueForHTTPHeaderField:@"User-Agent"];
                   STAssertEqualObjects(agent, kUserAgent, nil);
