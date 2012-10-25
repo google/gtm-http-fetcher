@@ -335,6 +335,13 @@ static NSString *const kCallbackError = @"error";
     self.delegateQueue = nil;
   }
 
+#if DEBUG && TARGET_OS_IPHONE
+  BOOL isPreIOS6 = (NSFoundationVersionNumber <= 890.1);
+  if (isPreIOS6 && delegateQueue) {
+    NSLog(@"GTMHTTPFetcher delegateQueue not safe in iOS 5");
+  }
+#endif
+
   if ([runLoopModes_ count] == 0 && delegateQueue == nil) {
     // No custom callback modes or queue were specified, so start the connection
     // on the current run loop in the current mode
