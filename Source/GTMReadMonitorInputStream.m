@@ -89,13 +89,13 @@
       if (isOnOriginalThread) {
         // invoke immediately
         NSData *data = [NSData dataWithBytesNoCopy:buffer
-                                            length:numRead
+                                            length:(NSUInteger)numRead
                                       freeWhenDone:NO];
         [self performSelector:sel withObject:data];
       } else {
         // copy the buffer into an NSData to be retained by the
         // performSelector, and invoke on the proper thread
-        NSData *data = [NSData dataWithBytes:buffer length:numRead];
+        NSData *data = [NSData dataWithBytes:buffer length:(NSUInteger)numRead];
         if (runLoopModes_) {
           [self performSelector:sel
                        onThread:thread_

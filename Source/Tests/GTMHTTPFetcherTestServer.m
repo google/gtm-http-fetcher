@@ -79,32 +79,11 @@
 }
 
 - (id)JSONFromData:(NSData *)data {
-  id obj = nil;
   NSError *error = nil;
-  Class serializer = NSClassFromString(@"NSJSONSerialization");
-  if (serializer) {
-    const NSUInteger kOpts = (1UL << 0); // NSJSONReadingMutableContainers
-    obj = [serializer JSONObjectWithData:data
-                                 options:kOpts
-                                   error:&error];
-  } else {
-    Class jsonClass = NSClassFromString(@"SBJsonParser");
-    if (!jsonClass) {
-      jsonClass = NSClassFromString(@"SBJSON");
-    }
-    if (!jsonClass) {
-      NSLog(@"JSON parser missing");
-    } else {
-      GTMSBJSON *parser = [[[jsonClass alloc] init] autorelease];
-      NSString *jsonStr = [[[NSString alloc] initWithData:data
-                                                 encoding:NSUTF8StringEncoding] autorelease];
-      if (jsonStr) {
-        // convert from JSON string to NSObject
-        obj = [parser objectWithString:jsonStr error:&error];
-      }
-    }
-  }
-
+  const NSUInteger kOpts = NSJSONReadingMutableContainers;
+  id obj = [NSJSONSerialization JSONObjectWithData:data
+                                           options:kOpts
+                                             error:&error];
   if (obj == nil) {
     NSString *jsonStr = [[[NSString alloc] initWithData:data
                                                encoding:NSUTF8StringEncoding] autorelease];
@@ -119,7 +98,7 @@
   NSAssert(server == server_, @"how'd we get a different server?!");
 
   GTMHTTPResponseMessage *response;
-  UInt32 resultStatus = 0;
+  int resultStatus = 0;
   NSData *data = nil;
   NSMutableDictionary *responseHeaders = [NSMutableDictionary dictionary];
 
@@ -226,7 +205,7 @@
     // status code
     resultStatus = [statusStr intValue];
 
-    NSString *template = @"{ \"error\" : { \"message\" : \"Server Status %u\","
+    NSString *const template = @"{ \"error\" : { \"message\" : \"Server Status %u\","
                          @" \"code\" : %u } }";
     NSString *errorStr = [NSString stringWithFormat:template,
                           resultStatus, resultStatus];

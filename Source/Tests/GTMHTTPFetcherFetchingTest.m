@@ -427,8 +427,8 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   if (!isServerRunning_) return;
 
   // create an empty file from which we can make an NSFileHandle
-  NSString *path = [NSTemporaryDirectory() stringByAppendingFormat:@"fhTest_%u",
-                    TickCount()];
+  NSString *path = [NSTemporaryDirectory() stringByAppendingFormat:@"fhTest_%@",
+                    [NSDate date]];
   [[NSData data] writeToFile:path atomically:YES];
 
   NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingAtPath:path];
@@ -1239,6 +1239,9 @@ totalBytesExpectedToSend:expectedBytes];
 }
 
 - (void)stopAuthorization {
+}
+
+- (void)stopAuthorizationForRequest:(NSURLRequest *)request {
 }
 
 - (BOOL)isAuthorizingRequest:(NSURLRequest *)request {

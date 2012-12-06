@@ -210,7 +210,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
       // first time through, seek to end to determine file length
       uploadFileHandleLength_ = (NSInteger) [uploadFileHandle_ seekToEndOfFile];
     }
-    return uploadFileHandleLength_;
+    return (NSUInteger)uploadFileHandleLength_;
   }
 }
 
@@ -598,7 +598,7 @@ totalBytesExpectedToSend:0];
   [self setResponseHeaders:[chunkFetcher responseHeaders]];
 
   if (error) {
-    int status = [error code];
+    int status = (int)[error code];
 
     // status 308 is "resume incomplete", meaning we should get the offset
     // from the Range header and upload the next chunk
@@ -668,7 +668,7 @@ totalBytesExpectedToSend:0];
         && [scanner scanLongLong:&rangeStart]
         && [scanner scanString:@"-" intoString:nil]
         && [scanner scanLongLong:&rangeEnd]) {
-      newOffset = rangeEnd + 1;
+      newOffset = (NSUInteger)rangeEnd + 1;
     }
   }
 
@@ -763,7 +763,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
 
   // the total bytes expected include the initial XML and the full chunked
   // data, independent of how big this fetcher's chunk is
-  totalBytesExpected = initialBodyLength_ + [self fullUploadLength];
+  totalBytesExpected = (NSInteger)(initialBodyLength_ + [self fullUploadLength]);
 
   if (delegate_ && delegateSentDataSEL_) {
     // ensure the chunk fetcher survives the callback in case the user pauses

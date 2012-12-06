@@ -54,6 +54,7 @@ static NSString *const kCallbackError = @"error";
 - (BOOL)beginFetchMayDelay:(BOOL)mayDelay
               mayAuthorize:(BOOL)mayAuthorize;
 - (void)failToBeginFetchWithError:(NSError *)error;
+- (void)failToBeginFetchDeferWithError:(NSError *)error;
 
 #if GTM_BACKGROUND_FETCHING
 - (void)endBackgroundTask;
@@ -71,8 +72,6 @@ static NSString *const kCallbackError = @"error";
 
 - (void)addCookiesToRequest:(NSMutableURLRequest *)request;
 - (void)handleCookiesForResponse:(NSURLResponse *)response;
-
-- (void)logNowWithError:(NSError *)error;
 
 - (void)invokeFetchCallbacksWithData:(NSData *)data
                                error:(NSError *)error;
@@ -205,6 +204,10 @@ static NSString *const kCallbackError = @"error";
   [retryTimer_ release];
   [comment_ release];
   [log_ release];
+#if !STRIP_GTM_FETCH_LOGGING
+  [logRequestBody_ release];
+  [logResponseBody_ release];
+#endif
 
   [super dealloc];
 }
@@ -241,8 +244,8 @@ static NSString *const kCallbackError = @"error";
     goto CannotBeginFetch;
   }
 
-  if (request_ == nil) {
-    NSAssert(request_ != nil, @"beginFetchWithDelegate requires a request");
+  if (request_ == nil || [request_ URL] == nil) {
+    NSAssert(request_ != nil, @"beginFetchWithDelegate requires a request with a URL");
     goto CannotBeginFetch;
   }
 
@@ -407,8 +410,26 @@ static NSString *const kCallbackError = @"error";
   return YES;
 
 CannotBeginFetch:
-  [self failToBeginFetchWithError:error];
+  [self failToBeginFetchDeferWithError:error];
   return NO;
+}
+
+- (void)failToBeginFetchDeferWithError:(NSError *)error {
+  if (delegateQueue_) {
+    // Deferring will happen by the callback being invoked on the specified
+    // queue.
+    [self failToBeginFetchWithError:error];
+  } else {
+    // No delegate queue has been specified, so put the callback
+    // on an appropriate run loop.
+    NSArray *modes = (runLoopModes_ ? runLoopModes_ :
+                      [NSArray arrayWithObject:NSRunLoopCommonModes]);
+    [self performSelector:@selector(failToBeginFetchWithError:)
+                 onThread:[NSThread currentThread]
+               withObject:error
+            waitUntilDone:NO
+                    modes:modes];
+  }
 }
 
 - (void)failToBeginFetchWithError:(NSError *)error {
@@ -491,7 +512,7 @@ CannotBeginFetch:
  finishedWithError:(NSError *)error {
   if (error != nil) {
     // We can't fetch without authorization
-    [self failToBeginFetchWithError:error];
+    [self failToBeginFetchDeferWithError:error];
   } else {
     [self beginFetchMayDelay:NO
                 mayAuthorize:NO];
@@ -650,7 +671,7 @@ CannotBeginFetch:
   // send the stopped notification
   [self sendStopNotificationIfNeeded];
 
-  [authorizer_ stopAuthorization];
+  [authorizer_ stopAuthorizationForRequest:request_];
 
   if (shouldReleaseCallbacks) {
     [self releaseCallbacks];
@@ -1064,36 +1085,40 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 // and copy the cached data.
 //
 // For other errors or if there's no cached data, just return the actual status.
-- (NSInteger)statusAfterHandlingNotModifiedError {
-
-  NSInteger status = [self statusCode];
-  if (status == kGTMHTTPFetcherStatusNotModified
+- (NSData *)cachedDataForStatus {
+  if ([self statusCode] == kGTMHTTPFetcherStatusNotModified
       && [fetchHistory_ shouldCacheETaggedData]) {
-
     NSData *cachedData = [fetchHistory_ cachedDataForRequest:request_];
-    if (cachedData) {
-      // Forge the status to pass on to the delegate
-      status = 200;
+    return cachedData;
+  }
+  return nil;
+}
 
-      // Copy our stored data
-      if (downloadFileHandle_ != nil) {
-        @try {
-          // Downloading to a file handle won't save to the cache (the data is
-          // likely inappropriately large for caching), but will still read from
-          // the cache, on the unlikely chance that the response was Not Modified
-          // and the URL response was indeed present in the cache.
-          [downloadFileHandle_ truncateFileAtOffset:0];
-          [downloadFileHandle_ writeData:cachedData];
-          downloadedLength_ = [downloadFileHandle_ offsetInFile];
-        }
-        @catch (NSException *) {
-          // Failed to write data, likely due to lack of disk space
-          status = kGTMHTTPFetcherErrorFileHandleException;
-        }
-      } else {
-        [downloadedData_ setData:cachedData];
-        downloadedLength_ = [cachedData length];
+- (NSInteger)statusAfterHandlingNotModifiedError {
+  NSInteger status = [self statusCode];
+  NSData *cachedData = [self cachedDataForStatus];
+  if (cachedData) {
+    // Forge the status to pass on to the delegate
+    status = 200;
+
+    // Copy our stored data
+    if (downloadFileHandle_ != nil) {
+      @try {
+        // Downloading to a file handle won't save to the cache (the data is
+        // likely inappropriately large for caching), but will still read from
+        // the cache, on the unlikely chance that the response was Not Modified
+        // and the URL response was indeed present in the cache.
+        [downloadFileHandle_ truncateFileAtOffset:0];
+        [downloadFileHandle_ writeData:cachedData];
+        downloadedLength_ = [downloadFileHandle_ offsetInFile];
       }
+      @catch (NSException *) {
+        // Failed to write data, likely due to lack of disk space
+        status = kGTMHTTPFetcherErrorFileHandleException;
+      }
+    } else {
+      [downloadedData_ setData:cachedData];
+      downloadedLength_ = [cachedData length];
     }
   }
   return status;
@@ -1115,9 +1140,14 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
     [[self retain] autorelease]; // in case the callback releases us
 
-    [self logNowWithError:nil];
-
-    NSInteger status = [self statusAfterHandlingNotModifiedError];
+    BOOL hasLogged = NO;
+    NSInteger status = [self statusCode];
+    if ([self cachedDataForStatus] != nil) {
+      // Log the pre-cache response.
+      [self logNowWithError:nil];
+      hasLogged = YES;
+      status = [self statusAfterHandlingNotModifiedError];
+    }
 
     // We want to send the stop notification before calling the delegate's
     // callback selector, since the callback selector may release all of
@@ -1149,6 +1179,11 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
         }
       }
     } else {
+      // unsuccessful
+      if (!hasLogged) {
+        [self logNowWithError:nil];
+        hasLogged = YES;
+      }
       // Status over 300; retry or notify the delegate of failure
       if ([self shouldRetryNowForStatus:status error:nil]) {
         // retrying
@@ -1170,9 +1205,16 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       // Call the callbacks
       [self invokeFetchCallbacksWithData:downloadedData_
                                    error:error];
-
       BOOL shouldRelease = [self shouldReleaseCallbacksUponCompletion];
       [self stopFetchReleasingCallbacks:shouldRelease];
+    }
+
+    BOOL shouldLogNow = !hasLogged;
+#if !STRIP_GTM_FETCH_LOGGING
+    if (shouldDeferResponseBodyLogging_) shouldLogNow = NO;
+#endif
+    if (shouldLogNow) {
+      [self logNowWithError:nil];
     }
   }
 }
@@ -1575,42 +1617,56 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 }
 
 - (id)userData {
-  return userData_;
+  @synchronized(self) {
+    return userData_;
+  }
 }
 
 - (void)setUserData:(id)theObj {
-  [userData_ autorelease];
-  userData_ = [theObj retain];
+  @synchronized(self) {
+    [userData_ autorelease];
+    userData_ = [theObj retain];
+  }
 }
 
 - (void)setProperties:(NSMutableDictionary *)dict {
-  [properties_ autorelease];
+  @synchronized(self) {
+    [properties_ autorelease];
 
-  // This copies rather than retains the parameter for compatiblity with
-  // an earlier version that took an immutable parameter and copied it.
-  properties_ = [dict mutableCopy];
+    // This copies rather than retains the parameter for compatiblity with
+    // an earlier version that took an immutable parameter and copied it.
+    properties_ = [dict mutableCopy];
+  }
 }
 
 - (NSMutableDictionary *)properties {
-  return properties_;
+  @synchronized(self) {
+    return properties_;
+  }
 }
 
 - (void)setProperty:(id)obj forKey:(NSString *)key {
-  if (properties_ == nil && obj != nil) {
-    [self setProperties:[NSMutableDictionary dictionary]];
+  @synchronized(self) {
+    if (properties_ == nil && obj != nil) {
+      [self setProperties:[NSMutableDictionary dictionary]];
+    }
+    [properties_ setValue:obj forKey:key];
   }
-  [properties_ setValue:obj forKey:key];
 }
 
 - (id)propertyForKey:(NSString *)key {
-  return [properties_ objectForKey:key];
+  @synchronized(self) {
+    return [properties_ objectForKey:key];
+  }
 }
 
 - (void)addPropertiesFromDictionary:(NSDictionary *)dict {
-  if (properties_ == nil && dict != nil) {
-    [self setProperties:[[dict mutableCopy] autorelease]];
-  } else {
-    [properties_ addEntriesFromDictionary:dict];
+  @synchronized(self) {
+    if (properties_ == nil && dict != nil) {
+      [self setProperties:[[dict mutableCopy] autorelease]];
+    } else {
+      [properties_ addEntriesFromDictionary:dict];
+    }
   }
 }
 
@@ -1620,6 +1676,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
   if (format) {
     va_list argList;
     va_start(argList, format);
+
     result = [[[NSString alloc] initWithFormat:format
                                      arguments:argList] autorelease];
     va_end(argList);

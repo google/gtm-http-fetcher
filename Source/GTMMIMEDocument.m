@@ -267,7 +267,7 @@ static BOOL memsrch(const unsigned char* needle, NSUInteger needleLen,
   const unsigned char* ptr = haystack;
   NSUInteger remain = haystackLen;
   while ((ptr = memchr(ptr, needle[0], remain)) != 0) {
-    remain = haystackLen - (ptr - haystack);
+    remain = haystackLen - (NSUInteger)(ptr - haystack);
     if (remain < needleLen) {
       return NO;
     }

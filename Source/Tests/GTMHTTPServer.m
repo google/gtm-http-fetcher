@@ -495,7 +495,7 @@ startFailed:
 
 - (BOOL)appendData:(NSData *)data {
   return CFHTTPMessageAppendBytes(message_,
-                                  [data bytes], [data length]) ? YES : NO;
+                                  [data bytes], (CFIndex)[data length]) ? YES : NO;
 }
 
 - (NSString *)headerFieldValueForKey:(NSString *)key {
@@ -507,7 +507,7 @@ startFailed:
 }
 
 - (UInt32)contentLength {
-  return [[self headerFieldValueForKey:@"Content-Length"] intValue];
+  return (UInt32)[[self headerFieldValueForKey:@"Content-Length"] intValue];
 }
 
 - (void)setBody:(NSData *)body {
