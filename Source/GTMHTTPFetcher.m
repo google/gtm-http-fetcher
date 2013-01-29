@@ -459,14 +459,13 @@ CannotBeginFetch:
 
 #if GTM_BACKGROUND_FETCHING
 - (void)backgroundFetchExpired {
+  // On background expiration, we stop the fetch and invoke the callbacks
+  NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherErrorDomain
+                                       code:kGTMHTTPFetcherErrorBackgroundExpiration
+                                   userInfo:nil];
+  [self invokeFetchCallbacksOnDelegateQueueWithData:nil
+                                              error:error];
   @synchronized(self) {
-    // On background expiration, we stop the fetch and invoke the callbacks
-    NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherErrorDomain
-                                         code:kGTMHTTPFetcherErrorBackgroundExpiration
-                                     userInfo:nil];
-    [self invokeFetchCallbacksOnDelegateQueueWithData:nil
-                                                error:error];
-
     // Stopping the fetch here will indirectly call endBackgroundTask
     [self stopFetchReleasingCallbacks:NO];
 
@@ -476,14 +475,16 @@ CannotBeginFetch:
 }
 
 - (void)endBackgroundTask {
-  // Whenever the connection stops or background execution expires,
-  // we need to tell UIApplication we're done
-  if (backgroundTaskIdentifer_) {
-    // If backgroundTaskIdentifer_ is non-zero, we know we're on iOS 4
-    UIApplication *app = [UIApplication sharedApplication];
-    [app endBackgroundTask:backgroundTaskIdentifer_];
+  @synchronized(self) {
+    // Whenever the connection stops or background execution expires,
+    // we need to tell UIApplication we're done
+    if (backgroundTaskIdentifer_) {
+      // If backgroundTaskIdentifer_ is non-zero, we know we're on iOS 4
+      UIApplication *app = [UIApplication sharedApplication];
+      [app endBackgroundTask:backgroundTaskIdentifer_];
 
-    backgroundTaskIdentifer_ = 0;
+      backgroundTaskIdentifer_ = 0;
+    }
   }
 }
 #endif // GTM_BACKGROUND_FETCHING
@@ -646,6 +647,8 @@ CannotBeginFetch:
 
 // Cancel the fetch of the URL that's currently in progress.
 - (void)stopFetchReleasingCallbacks:(BOOL)shouldReleaseCallbacks {
+  id <GTMHTTPFetcherServiceProtocol> service;
+
   // if the connection or the retry timer is all that's retaining the fetcher,
   // we want to be sure this instance survives stopping at least long enough for
   // the stack to unwind
@@ -653,39 +656,45 @@ CannotBeginFetch:
 
   [self destroyRetryTimer];
 
-  if (connection_) {
-    // in case cancelling the connection calls this recursively, we want
-    // to ensure that we'll only release the connection and delegate once,
-    // so first set connection_ to nil
-    NSURLConnection* oldConnection = connection_;
-    connection_ = nil;
+  @synchronized(self) {
+    service = [[service_ retain] autorelease];
 
-    if (!hasConnectionEnded_) {
-      [oldConnection cancel];
+    if (connection_) {
+      // in case cancelling the connection calls this recursively, we want
+      // to ensure that we'll only release the connection and delegate once,
+      // so first set connection_ to nil
+      NSURLConnection* oldConnection = connection_;
+      connection_ = nil;
+
+      if (!hasConnectionEnded_) {
+        [oldConnection cancel];
+      }
+
+      // this may be called in a callback from the connection, so use autorelease
+      [oldConnection autorelease];
     }
-
-    // this may be called in a callback from the connection, so use autorelease
-    [oldConnection autorelease];
   }
 
   // send the stopped notification
   [self sendStopNotificationIfNeeded];
 
-  [authorizer_ stopAuthorizationForRequest:request_];
+  @synchronized(self) {
+    [authorizer_ stopAuthorizationForRequest:request_];
 
-  if (shouldReleaseCallbacks) {
-    [self releaseCallbacks];
+    if (shouldReleaseCallbacks) {
+      [self releaseCallbacks];
 
-    self.authorizer = nil;
+      self.authorizer = nil;
+    }
+
+    if (temporaryDownloadPath_) {
+      [[NSFileManager defaultManager] removeItemAtPath:temporaryDownloadPath_
+                                                 error:NULL];
+      self.temporaryDownloadPath = nil;
+    }
   }
 
-  [service_ fetcherDidStop:self];
-
-  if (temporaryDownloadPath_) {
-    [[NSFileManager defaultManager] removeItemAtPath:temporaryDownloadPath_
-                                               error:NULL];
-    self.temporaryDownloadPath = nil;
-  }
+  [service fetcherDidStop:self];
 
 #if GTM_BACKGROUND_FETCHING
   [self endBackgroundTask];
@@ -694,15 +703,19 @@ CannotBeginFetch:
 
 // External stop method
 - (void)stopFetching {
-  @synchronized(self) {
-    [self stopFetchReleasingCallbacks:YES];
-  }
+  [self stopFetchReleasingCallbacks:YES];
 }
 
 - (void)sendStopNotificationIfNeeded {
-  if (isStopNotificationNeeded_) {
-    isStopNotificationNeeded_ = NO;
+  BOOL sendNow = NO;
+  @synchronized(self) {
+    if (isStopNotificationNeeded_) {
+      isStopNotificationNeeded_ = NO;
+      sendNow = YES;
+    }
+  }
 
+  if (sendNow) {
     NSNotificationCenter *defaultNC = [NSNotificationCenter defaultCenter];
     [defaultNC postNotificationName:kGTMHTTPFetcherStoppedNotification
                              object:self];
@@ -916,16 +929,28 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
 
 - (void)invokeFetchCallbacksWithData:(NSData *)data
                                error:(NSError *)error {
+  // To avoid deadlocks, this should not be called inside of @synchronized(self)
+  id target;
+  SEL sel;
+#if NS_BLOCKS_AVAILABLE
+  void (^block)(NSData *, NSError *);
+#endif
+  @synchronized(self) {
+    target = delegate_;
+    sel = finishedSel_;
+    block = completionBlock_;
+  }
+
   [[self retain] autorelease];  // In case the callback releases us
 
-  [self invokeFetchCallback:finishedSel_
-                     target:delegate_
+  [self invokeFetchCallback:sel
+                     target:target
                        data:data
                       error:error];
 
 #if NS_BLOCKS_AVAILABLE
-  if (completionBlock_) {
-    completionBlock_(data, error);
+  if (block) {
+    block(data, error);
   }
 #endif
 }
@@ -1125,6 +1150,16 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
+  BOOL shouldStopFetching = YES;
+  BOOL shouldSendStopNotification = NO;
+  NSError *error = nil;
+  NSData *downloadedData;
+#if !STRIP_GTM_FETCH_LOGGING
+  BOOL shouldDeferLogging = NO;
+#endif
+  BOOL shouldBeginRetryTimer = NO;
+  BOOL hasLogged = NO;
+
   @synchronized(self) {
     // We no longer need to cancel the connection
     hasConnectionEnded_ = YES;
@@ -1140,7 +1175,6 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
     [[self retain] autorelease]; // in case the callback releases us
 
-    BOOL hasLogged = NO;
     NSInteger status = [self statusCode];
     if ([self cachedDataForStatus] != nil) {
       // Log the pre-cache response.
@@ -1149,17 +1183,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       status = [self statusAfterHandlingNotModifiedError];
     }
 
-    // We want to send the stop notification before calling the delegate's
-    // callback selector, since the callback selector may release all of
-    // the fetcher properties that the client is using to track the fetches.
-    //
-    // We'll also stop now so that, to any observers watching the notifications,
-    // it doesn't look like our wait for a retry (which may be long,
-    // 30 seconds or more) is part of the network activity.
-    [self sendStopNotificationIfNeeded];
-
-    BOOL shouldStopFetching = YES;
-    NSError *error = nil;
+    shouldSendStopNotification = YES;
 
     if (status >= 0 && status < 300) {
       // success
@@ -1187,7 +1211,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       // Status over 300; retry or notify the delegate of failure
       if ([self shouldRetryNowForStatus:status error:nil]) {
         // retrying
-        [self beginRetryTimer];
+        shouldBeginRetryTimer = YES;
         shouldStopFetching = NO;
       } else {
         NSDictionary *userInfo = nil;
@@ -1200,18 +1224,39 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
                                 userInfo:userInfo];
       }
     }
+    downloadedData = downloadedData_;
+#if !STRIP_GTM_FETCH_LOGGING
+    shouldDeferLogging = shouldDeferResponseBodyLogging_;
+#endif
+  }
 
-    if (shouldStopFetching) {
-      // Call the callbacks
-      [self invokeFetchCallbacksWithData:downloadedData_
-                                   error:error];
-      BOOL shouldRelease = [self shouldReleaseCallbacksUponCompletion];
-      [self stopFetchReleasingCallbacks:shouldRelease];
-    }
+  if (shouldBeginRetryTimer) {
+    [self beginRetryTimer];
+  }
 
+  if (shouldSendStopNotification) {
+    // We want to send the stop notification before calling the delegate's
+    // callback selector, since the callback selector may release all of
+    // the fetcher properties that the client is using to track the fetches.
+    //
+    // We'll also stop now so that, to any observers watching the notifications,
+    // it doesn't look like our wait for a retry (which may be long,
+    // 30 seconds or more) is part of the network activity.
+    [self sendStopNotificationIfNeeded];
+  }
+
+  if (shouldStopFetching) {
+    // Call the callbacks (outside of the @synchronized to avoid deadlocks.)
+    [self invokeFetchCallbacksWithData:downloadedData
+                                 error:error];
+    BOOL shouldRelease = [self shouldReleaseCallbacksUponCompletion];
+    [self stopFetchReleasingCallbacks:shouldRelease];
+  }
+
+  @synchronized(self) {
     BOOL shouldLogNow = !hasLogged;
 #if !STRIP_GTM_FETCH_LOGGING
-    if (shouldDeferResponseBodyLogging_) shouldLogNow = NO;
+    if (shouldDeferLogging) shouldLogNow = NO;
 #endif
     if (shouldLogNow) {
       [self logNowWithError:nil];
@@ -1240,24 +1285,21 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
     hasConnectionEnded_ = YES;
 
     [self logNowWithError:error];
+  }
 
-    // See comment about sendStopNotificationIfNeeded
-    // in connectionDidFinishLoading:
-    [self sendStopNotificationIfNeeded];
+  // See comment about sendStopNotificationIfNeeded
+  // in connectionDidFinishLoading:
+  [self sendStopNotificationIfNeeded];
 
-    if ([self shouldRetryNowForStatus:0 error:error]) {
+  if ([self shouldRetryNowForStatus:0 error:error]) {
+    [self beginRetryTimer];
+  } else {
+    [[self retain] autorelease]; // in case the callback releases us
 
-      [self beginRetryTimer];
+    [self invokeFetchCallbacksWithData:nil
+                                 error:error];
 
-    } else {
-
-      [[self retain] autorelease]; // in case the callback releases us
-
-      [self invokeFetchCallbacksWithData:nil
-                                   error:error];
-
-      [self stopFetchReleasingCallbacks:YES];
-    }
+    [self stopFetchReleasingCallbacks:YES];
   }
 }
 
@@ -1375,43 +1417,44 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
                           waitUntilDone:NO];
       return;
     }
-
-    NSTimeInterval nextInterval = [self nextRetryInterval];
-    NSTimeInterval maxInterval = [self maxRetryInterval];
-
-    NSTimeInterval newInterval = MIN(nextInterval, maxInterval);
-
-    [self primeRetryTimerWithNewTimeInterval:newInterval];
   }
+
+  NSTimeInterval nextInterval = [self nextRetryInterval];
+  NSTimeInterval maxInterval = [self maxRetryInterval];
+  NSTimeInterval newInterval = MIN(nextInterval, maxInterval);
+
+  [self primeRetryTimerWithNewTimeInterval:newInterval];
+
+  NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+  [nc postNotificationName:kGTMHTTPFetcherRetryDelayStartedNotification
+                    object:self];
 }
 
 - (void)primeRetryTimerWithNewTimeInterval:(NSTimeInterval)secs {
 
   [self destroyRetryTimer];
 
-  lastRetryInterval_ = secs;
+  @synchronized(self) {
+    lastRetryInterval_ = secs;
 
-  retryTimer_ = [NSTimer timerWithTimeInterval:secs
-                                        target:self
-                                      selector:@selector(retryTimerFired:)
-                                      userInfo:nil
-                                       repeats:NO];
-  [retryTimer_ retain];
+    retryTimer_ = [NSTimer timerWithTimeInterval:secs
+                                          target:self
+                                        selector:@selector(retryTimerFired:)
+                                        userInfo:nil
+                                         repeats:NO];
+    [retryTimer_ retain];
 
-  NSRunLoop *timerRL = (self.delegateQueue ?
-                        [NSRunLoop mainRunLoop] : [NSRunLoop currentRunLoop]);
-  [timerRL addTimer:retryTimer_
-            forMode:NSDefaultRunLoopMode];
-
-  NSNotificationCenter *defaultNC = [NSNotificationCenter defaultCenter];
-  [defaultNC postNotificationName:kGTMHTTPFetcherRetryDelayStartedNotification
-                           object:self];
+    NSRunLoop *timerRL = (self.delegateQueue ?
+                          [NSRunLoop mainRunLoop] : [NSRunLoop currentRunLoop]);
+    [timerRL addTimer:retryTimer_
+              forMode:NSDefaultRunLoopMode];
+  }
 }
 
 - (void)retryTimerFired:(NSTimer *)timer {
-  @synchronized(self) {
-    [self destroyRetryTimer];
+  [self destroyRetryTimer];
 
+  @synchronized(self) {
     retryCount_++;
 
     [self retryFetch];
@@ -1419,11 +1462,17 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 }
 
 - (void)destroyRetryTimer {
-  if (retryTimer_) {
-    [retryTimer_ invalidate];
-    [retryTimer_ autorelease];
-    retryTimer_ = nil;
+  BOOL shouldNotify = NO;
+  @synchronized(self) {
+    if (retryTimer_) {
+      [retryTimer_ invalidate];
+      [retryTimer_ autorelease];
+      retryTimer_ = nil;
+      shouldNotify = YES;
+    }
+  }
 
+  if (shouldNotify) {
     NSNotificationCenter *defaultNC = [NSNotificationCenter defaultCenter];
     [defaultNC postNotificationName:kGTMHTTPFetcherRetryDelayStoppedNotification
                              object:self];
