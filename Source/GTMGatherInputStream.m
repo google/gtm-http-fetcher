@@ -172,7 +172,7 @@
 }
 
 - (NSMethodSignature*)methodSignatureForSelector:(SEL)selector {
-  return [dummyStream_ methodSignatureForSelector:(SEL)selector];
+  return [dummyStream_ methodSignatureForSelector:selector];
 }
 
 - (void)forwardInvocation:(NSInvocation*)invocation {
