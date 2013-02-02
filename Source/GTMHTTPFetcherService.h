@@ -62,11 +62,11 @@
 // fetcher for the life of the connection as well. So the caller doesn't have
 // to retain the fetcher explicitly unless they want to be able to monitor
 // or cancel it.
-- (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
-- (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL;
-- (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString;
+- (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request GTM_NONNULL((1));
+- (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL GTM_NONNULL((1));
+- (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString GTM_NONNULL((1));
 - (id)fetcherWithRequest:(NSURLRequest *)request
-            fetcherClass:(Class)fetcherClass;
+            fetcherClass:(Class)fetcherClass GTM_NONNULL((1));
 
 // Queues of delayed and running fetchers. Each dictionary contains arrays
 // of fetchers, keyed by host
@@ -78,7 +78,7 @@
 @property (retain, readonly) NSDictionary *delayedHosts;
 @property (retain, readonly) NSDictionary *runningHosts;
 
-- (BOOL)isDelayingFetcher:(GTMHTTPFetcher *)fetcher;
+- (BOOL)isDelayingFetcher:(GTMHTTPFetcher *)fetcher GTM_NONNULL((1));
 
 - (NSUInteger)numberOfFetchers;        // running + delayed fetchers
 - (NSUInteger)numberOfRunningFetchers;
