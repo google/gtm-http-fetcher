@@ -257,14 +257,6 @@
   #endif
 #endif
 
-#ifndef GTM_NONNULL
-  #if defined(__has_attribute) && __has_attribute(nonnull)
-    #define GTM_NONNULL(x) __attribute__((nonnull x))
-  #else
-    #define GTM_NONNULL(x)
-  #endif
-#endif
-
 #if TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 40000)
   #define GTM_BACKGROUND_FETCHING 1
 #endif
@@ -495,11 +487,11 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // the connection is successfully created, the connection should retain the
 // fetcher for the life of the connection as well. So the caller doesn't have
 // to retain the fetcher explicitly unless they want to be able to cancel it.
-+ (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request GTM_NONNULL((1));
++ (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
 
 // Convenience methods that make a request, like +fetcherWithRequest
-+ (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL GTM_NONNULL((1));
-+ (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString GTM_NONNULL((1));
++ (GTMHTTPFetcher *)fetcherWithURL:(NSURL *)requestURL;
++ (GTMHTTPFetcher *)fetcherWithURLString:(NSString *)requestURLString;
 
 // Designated initializer
 - (id)initWithRequest:(NSURLRequest *)request;
@@ -711,8 +703,8 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // Stored property values are retained for the convenience of the caller
 @property (copy) NSMutableDictionary *properties;
 
-- (void)setProperty:(id)obj forKey:(NSString *)key GTM_NONNULL((2)); // pass nil obj to remove property
-- (id)propertyForKey:(NSString *)key GTM_NONNULL((1));
+- (void)setProperty:(id)obj forKey:(NSString *)key; // pass nil obj to remove property
+- (id)propertyForKey:(NSString *)key;
 
 - (void)addPropertiesFromDictionary:(NSDictionary *)dict;
 
