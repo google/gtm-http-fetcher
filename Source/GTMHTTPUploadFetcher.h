@@ -90,19 +90,19 @@
                                         uploadData:(NSData *)data
                                     uploadMIMEType:(NSString *)uploadMIMEType
                                          chunkSize:(NSUInteger)chunkSize
-                                    fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil GTM_NONNULL((1,2,3));
+                                    fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil;
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithRequest:(NSURLRequest *)request
                                   uploadFileHandle:(NSFileHandle *)fileHandle
                                     uploadMIMEType:(NSString *)uploadMIMEType
                                          chunkSize:(NSUInteger)chunkSize
-                                    fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil GTM_NONNULL((1,2,3));
+                                    fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil;
 
 + (GTMHTTPUploadFetcher *)uploadFetcherWithLocation:(NSURL *)locationURL
                                    uploadFileHandle:(NSFileHandle *)fileHandle
                                      uploadMIMEType:(NSString *)uploadMIMEType
                                           chunkSize:(NSUInteger)chunkSize
-                                     fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil GTM_NONNULL((1,2,3));
+                                     fetcherService:(GTMHTTPFetcherService *)fetcherServiceOrNil;
 - (void)pauseFetching;
 - (void)resumeFetching;
 - (BOOL)isPaused;
