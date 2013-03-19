@@ -191,6 +191,23 @@ static NSString* gLoggingProcessName = nil;
   return gLoggingDateStamp;
 }
 
++ (NSString *)processNameLogPrefix {
+  static NSString *prefix = nil;
+  if (!prefix) {
+    NSString *processName = [[self class] loggingProcessName];
+    prefix = [[NSString alloc] initWithFormat:@"%@_log_", processName];
+  }
+  return prefix;
+}
+
++ (NSString *)symlinkNameSuffix {
+  return @"_log_newest.html";
+}
+
++ (NSString *)htmlFileName {
+  return @"aperçu_http_log.html";
+}
+
 // formattedStringFromData returns a prettyprinted string for XML or JSON input,
 // and a plain string for other input data
 - (NSString *)formattedStringFromData:(NSData *)inputData
@@ -444,11 +461,12 @@ static NSString* gLoggingProcessName = nil;
   NSString *parentDir = [[self class] loggingDirectory];
   NSString *processName = [[self class] loggingProcessName];
   NSString *dateStamp = [[self class] loggingDateStamp];
+  NSString *logNamePrefix = [[self class] processNameLogPrefix];
 
   // make a directory for this run's logs, like
   //   SyncProto_logs_10-16_01-56-58PM
-  NSString *dirName = [NSString stringWithFormat:@"%@_log_%@",
-                       processName, dateStamp];
+  NSString *dirName = [NSString stringWithFormat:@"%@%@",
+                       logNamePrefix, dateStamp];
   NSString *logDirectory = [parentDir stringByAppendingPathComponent:dirName];
 
   if (gIsLoggingToFile) {
@@ -550,7 +568,7 @@ static NSString* gLoggingProcessName = nil;
   }
 
   // we'll have one main html file per run of the app
-  NSString *htmlName = @"aperçu_http_log.html";
+  NSString *htmlName = [[self class] htmlFileName];
   NSString *htmlPath =[logDirectory stringByAppendingPathComponent:htmlName];
 
   // if the html file exists (from logging previous fetches) we don't need
@@ -867,8 +885,8 @@ static NSString* gLoggingProcessName = nil;
     [stream close];
 
     // Make a symlink to the latest html
-    NSString *symlinkName = [NSString stringWithFormat:@"%@_log_newest.html",
-                             processName];
+    NSString *const symlinkNameSuffix = [[self class] symlinkNameSuffix];
+    NSString *symlinkName = [processName stringByAppendingString:symlinkNameSuffix];
     NSString *symlinkPath = [parentDir stringByAppendingPathComponent:symlinkName];
 
     [[self class] removeItemAtPath:symlinkPath];

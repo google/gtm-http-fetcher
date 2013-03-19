@@ -81,6 +81,11 @@
 - (void)logFetchWithError:(NSError *)error;
 - (BOOL)logCapturePostStream;
 
+// internal; accessors useful for viewing logs
++ (NSString *)processNameLogPrefix;
++ (NSString *)symlinkNameSuffix;
++ (NSString *)htmlFileName;
+
 // Applications may provide alternative body strings to be displayed in the
 // log, such as for binary requests or responses.  If deferring is turned
 // on, the response log will not be sent until deferring is turned off,
