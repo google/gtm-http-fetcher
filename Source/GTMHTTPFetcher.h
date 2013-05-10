@@ -85,7 +85,9 @@
 // iOS 6 and Mac OS X 10.7, clients may simply create an operation queue for
 // callbacks on a background thread:
 //
-//   fetcher.delegateQueue = [[[NSOperationQueue alloc] init] autorelease];
+//   NSOperationQueue *queue = [[[NSOperationQueue alloc] init] autorelease];
+//   [queue setMaxConcurrentOperationCount:1];
+//   fetcher.delegateQueue = queue;
 //
 // or specify the main queue for callbacks on the main thread:
 //
@@ -383,7 +385,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 @protocol GTMFetcherAuthorizationProtocol <NSObject>
 @required
 // This protocol allows us to call the authorizer without requiring its sources
-// in this project
+// in this project.
 - (void)authorizeRequest:(NSMutableURLRequest *)request
                 delegate:(id)delegate
        didFinishSelector:(SEL)sel;
@@ -396,12 +398,27 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 
 - (BOOL)isAuthorizedRequest:(NSURLRequest *)request;
 
-- (NSString *)userEmail;
+@property (retain, readonly) NSString *userEmail;
 
 @optional
+
+// Indicate if authorization may be attempted. Even if this succeeds,
+// authorization may fail if the user's permissions have been revoked.
+@property (readonly) BOOL canAuthorize;
+
+// For development only, allow authorization of non-SSL requests, allowing
+// transmission of the bearer token unencrypted.
+@property (assign) BOOL shouldAuthorizeAllRequests;
+
+#if NS_BLOCKS_AVAILABLE
+- (void)authorizeRequest:(NSMutableURLRequest *)request
+       completionHandler:(void (^)(NSError *error))handler;
+#endif
+
 @property (assign) id <GTMHTTPFetcherServiceProtocol> fetcherService; // WEAK
 
 - (BOOL)primeForRefresh;
+
 @end
 
 // GTMHTTPFetcher objects are used for async retrieval of an http get or post
