@@ -492,6 +492,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
   NSString *comment_;               // comment for log
   NSString *log_;
 #if !STRIP_GTM_FETCH_LOGGING
+  NSURL *redirectedFromURL_;
   NSString *logRequestBody_;
   NSString *logResponseBody_;
   BOOL shouldDeferResponseBodyLogging_;

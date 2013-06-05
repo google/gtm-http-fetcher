@@ -210,6 +210,7 @@ static NSString *const kCallbackError = @"error";
   [comment_ release];
   [log_ release];
 #if !STRIP_GTM_FETCH_LOGGING
+  [redirectedFromURL_ release];
   [logRequestBody_ release];
   [logResponseBody_ release];
 #endif

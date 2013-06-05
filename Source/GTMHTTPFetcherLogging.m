@@ -606,6 +606,16 @@ static NSString* gLoggingProcessName = nil;
   // write the request URL
   NSString *requestMethod = [request HTTPMethod];
   NSURL *requestURL = [request URL];
+
+  NSURL *redirectedFromHost = [[[redirectedFromURL_ host] copy] autorelease];
+  // Save the request URL for next time in case this redirects.
+  [redirectedFromURL_ release];
+  redirectedFromURL_ = [requestURL copy];
+  if (redirectedFromHost) {
+    [outputHTML appendFormat:@"<FONT COLOR='#990066'><i>redirected from %@</i></FONT><br>",
+     redirectedFromHost];
+  }
+
   [outputHTML appendFormat:@"<b>request:</b> %@ <code>%@</code><br>\n",
    requestMethod, requestURL];
 
@@ -794,6 +804,9 @@ static NSString* gLoggingProcessName = nil;
     [copyable appendFormat:@"%@\n\n", comment];
   }
   [copyable appendFormat:@"%@\n", [NSDate date]];
+  if (redirectedFromHost) {
+    [copyable appendFormat:@"Redirected from %@\n", redirectedFromHost];
+  }
   [copyable appendFormat:@"Request: %@ %@\n", requestMethod, requestURL];
   if ([requestHeaders count] > 0) {
     [copyable appendFormat:@"Request headers:\n%@\n",
