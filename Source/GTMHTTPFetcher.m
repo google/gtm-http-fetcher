@@ -17,8 +17,6 @@
 //  GTMHTTPFetcher.m
 //
 
-#define GTMHTTPFETCHER_DEFINE_GLOBALS 1
-
 #import "GTMHTTPFetcher.h"
 
 #if GTM_BACKGROUND_FETCHING
@@ -27,6 +25,17 @@
 
 static id <GTMCookieStorageProtocol> gGTMFetcherStaticCookieStorage = nil;
 static Class gGTMFetcherConnectionClass = nil;
+
+
+NSString *const kGTMHTTPFetcherStartedNotification           = @"kGTMHTTPFetcherStartedNotification";
+NSString *const kGTMHTTPFetcherStoppedNotification           = @"kGTMHTTPFetcherStoppedNotification";
+NSString *const kGTMHTTPFetcherRetryDelayStartedNotification = @"kGTMHTTPFetcherRetryDelayStartedNotification";
+NSString *const kGTMHTTPFetcherRetryDelayStoppedNotification = @"kGTMHTTPFetcherRetryDelayStoppedNotification";
+
+NSString *const kGTMHTTPFetcherErrorDomain       = @"com.google.GTMHTTPFetcher";
+NSString *const kGTMHTTPFetcherStatusDomain      = @"com.google.HTTPStatus";
+NSString *const kGTMHTTPFetcherErrorChallengeKey = @"challenge";
+NSString *const kGTMHTTPFetcherStatusDataKey     = @"data";  // data returned with a kGTMHTTPFetcherStatusDomain error
 
 // The default max retry interview is 10 minutes for uploads (POST/PUT/PATCH),
 // 1 minute for downloads.
@@ -97,6 +106,7 @@ static NSString *const kCallbackError = @"error";
 @interface GTMHTTPFetcher (GTMHTTPFetcherLoggingInternal)
 - (void)setupStreamLogging;
 - (void)logFetchWithError:(NSError *)error;
+- (void)logNowWithError:(NSError *)error;
 @end
 
 @implementation GTMHTTPFetcher

@@ -260,11 +260,13 @@
         }
       }
 
-      [self addRunningFetcher:nextFetcher forHost:host];
-      runningForHost = [runningHosts_ objectForKey:host];
+      if (nextFetcher) {
+        [self addRunningFetcher:nextFetcher forHost:host];
+        runningForHost = [runningHosts_ objectForKey:host];
 
-      [delayedForHost removeObjectIdenticalTo:nextFetcher];
-      [self startFetcher:nextFetcher];
+        [delayedForHost removeObjectIdenticalTo:nextFetcher];
+        [self startFetcher:nextFetcher];
+      }
     }
 
     if ([runningForHost count] == 0) {

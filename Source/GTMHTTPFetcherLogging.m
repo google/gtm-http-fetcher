@@ -32,12 +32,14 @@
 //
 // We locally declare methods of GTMReadMonitorInputStream so we
 // do not need to import the header, as some projects may not have it available
+#ifndef GTM_NSSTREAM_DELEGATE
 @interface GTMReadMonitorInputStream : NSInputStream
 + (id)inputStreamWithStream:(NSInputStream *)input;
 @property (assign) id readDelegate;
 @property (assign) SEL readSelector;
 @property (retain) NSArray *runLoopModes;
 @end
+#endif
 
 // If GTMNSJSONSerialization is available, it is used for formatting JSON
 #if (TARGET_OS_MAC && !TARGET_OS_IPHONE && (MAC_OS_X_VERSION_MAX_ALLOWED < 1070)) || \
@@ -165,7 +167,7 @@ static NSString* gLoggingProcessName = nil;
     [loggingProcessName replaceOccurrencesOfString:@" "
                                         withString:@"_"
                                            options:0
-                                             range:NSMakeRange(0, [gLoggingProcessName length])];
+                                             range:NSMakeRange(0, [loggingProcessName length])];
     gLoggingProcessName = loggingProcessName;
   }
   return gLoggingProcessName;
