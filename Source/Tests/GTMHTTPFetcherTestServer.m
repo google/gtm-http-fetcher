@@ -146,36 +146,42 @@
     long long totalToUpload = 0;
     if ([crScanner scanString:@"bytes */" intoString:NULL]
         && [crScanner scanLongLong:&totalToUpload]) {
-      // this is a query for where to resume; we'll arbitrarily resume at
-      // half the total length of the upload
-      long long resumeLocation = totalToUpload / 2;
-      NSString *range = [NSString stringWithFormat:@"bytes=0-%lld",
-                         resumeLocation];
-      [responseHeaders setValue:range forKey:@"Range"];
-      resultStatus = 308;
-      goto SendResponse;
-    }
-
-    long long rangeLow = 0;
-    long long rangeHigh = 0;
-    if ([crScanner scanString:@"bytes " intoString:nil]
-        && [crScanner scanLongLong:&rangeLow]
-        && [crScanner scanString:@"-" intoString:NULL]
-        && [crScanner scanLongLong:&rangeHigh]
-        && [crScanner scanString:@"/" intoString:NULL]
-        && [crScanner scanLongLong:&totalToUpload]) {
-      // a chunk request
-      if ((rangeHigh + 1) < totalToUpload) {
-        // this is a middle chunk, so send a 308 status to ask for more chunks
+      if (totalToUpload > 0) {
+        // this is a query for where to resume; we'll arbitrarily resume at
+        // half the total length of the upload
+        long long resumeLocation = totalToUpload / 2;
         NSString *range = [NSString stringWithFormat:@"bytes=0-%lld",
-                           rangeHigh];
+                           resumeLocation];
         [responseHeaders setValue:range forKey:@"Range"];
         resultStatus = 308;
         goto SendResponse;
       } else {
-        // this is the final chunk; remove the ".upload" at the end and
+        // the upload is empty so this is the final chunk; remove the ".upload" at the end and
         // fall through to return the requested resource at the path
         path = [path stringByDeletingPathExtension];
+      }
+    } else {
+      long long rangeLow = 0;
+      long long rangeHigh = 0;
+      if ([crScanner scanString:@"bytes " intoString:nil]
+          && [crScanner scanLongLong:&rangeLow]
+          && [crScanner scanString:@"-" intoString:NULL]
+          && [crScanner scanLongLong:&rangeHigh]
+          && [crScanner scanString:@"/" intoString:NULL]
+          && [crScanner scanLongLong:&totalToUpload]) {
+        // a chunk request
+        if ((rangeHigh + 1) < totalToUpload) {
+          // this is a middle chunk, so send a 308 status to ask for more chunks
+          NSString *range = [NSString stringWithFormat:@"bytes=0-%lld",
+                             rangeHigh];
+          [responseHeaders setValue:range forKey:@"Range"];
+          resultStatus = 308;
+          goto SendResponse;
+        } else {
+          // this is the final chunk; remove the ".upload" at the end and
+          // fall through to return the requested resource at the path
+          path = [path stringByDeletingPathExtension];
+        }
       }
     }
   }
