@@ -156,7 +156,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
     ++fetchStoppedNotificationCount_;
   }
 
-  STAssertTrue(fetchStartedNotificationCount_ <= fetchStartedNotificationCount_,
+  STAssertTrue(fetchStoppedNotificationCount_ <= fetchStartedNotificationCount_,
                @"fetch notification imbalance: starts=%d stops=%d",
                fetchStartedNotificationCount_,
                fetchStoppedNotificationCount_);
