@@ -81,7 +81,7 @@
 
   GTMMIMEDocument* doc = [GTMMIMEDocument MIMEDocument];
 
-  NSMutableDictionary* h1 = [NSDictionary dictionaryWithObjectsAndKeys:
+  NSDictionary* h1 = [NSDictionary dictionaryWithObjectsAndKeys:
                              @"bar", @"hfoo",
                              @"baz", @"hfaz",
                              nil];
@@ -124,7 +124,7 @@
 - (void)testMultiPartDoc {
   GTMMIMEDocument* doc = [GTMMIMEDocument MIMEDocument];
 
-  NSMutableDictionary* h1 = [NSDictionary dictionaryWithObjectsAndKeys:
+  NSDictionary* h1 = [NSDictionary dictionaryWithObjectsAndKeys:
                              @"bar", @"hfoo",
                              @"baz", @"hfaz",
                              nil];
@@ -182,7 +182,7 @@
   // both the normal boundary ("END_OF_PART") and the first alternate
   // guess (given a random seed of 1, done below)
 
-  NSMutableDictionary* h1 = [NSDictionary dictionaryWithObjectsAndKeys:
+  NSDictionary* h1 = [NSDictionary dictionaryWithObjectsAndKeys:
                              @"bar", @"hfoo",
                              @"baz", @"hfaz",
                              nil];
