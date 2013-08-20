@@ -343,7 +343,7 @@ static NSString* gLoggingProcessName = nil;
   @synchronized(self) {
     if (flag != shouldDeferResponseBodyLogging_) {
       shouldDeferResponseBodyLogging_ = flag;
-      if (!flag) {
+      if (!flag && !hasLoggedError_) {
         [self performSelectorOnMainThread:@selector(logFetchWithError:)
                                withObject:nil
                             waitUntilDone:NO];

@@ -1189,7 +1189,6 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
   BOOL shouldDeferLogging = NO;
 #endif
   BOOL shouldBeginRetryTimer = NO;
-  BOOL hasLogged = NO;
 
   @synchronized(self) {
     // We no longer need to cancel the connection
@@ -1208,9 +1207,11 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
     NSInteger status = [self statusCode];
     if ([self cachedDataForStatus] != nil) {
+#if !STRIP_GTM_FETCH_LOGGING
       // Log the pre-cache response.
       [self logNowWithError:nil];
-      hasLogged = YES;
+      hasLoggedError_ = YES;
+#endif
       status = [self statusAfterHandlingNotModifiedError];
     }
 
@@ -1235,10 +1236,12 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       }
     } else {
       // unsuccessful
-      if (!hasLogged) {
+#if !STRIP_GTM_FETCH_LOGGING
+      if (!hasLoggedError_) {
         [self logNowWithError:nil];
-        hasLogged = YES;
+        hasLoggedError_ = YES;
       }
+#endif
       // Status over 300; retry or notify the delegate of failure
       if ([self shouldRetryNowForStatus:status error:nil]) {
         // retrying
@@ -1284,15 +1287,13 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
     [self stopFetchReleasingCallbacks:shouldRelease];
   }
 
-  @synchronized(self) {
-    BOOL shouldLogNow = !hasLogged;
 #if !STRIP_GTM_FETCH_LOGGING
-    if (shouldDeferLogging) shouldLogNow = NO;
-#endif
-    if (shouldLogNow) {
+  @synchronized(self) {
+    if (!shouldDeferLogging && !hasLoggedError_) {
       [self logNowWithError:nil];
     }
   }
+#endif
 }
 
 - (BOOL)shouldReleaseCallbacksUponCompletion {

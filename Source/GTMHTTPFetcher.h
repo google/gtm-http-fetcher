@@ -489,6 +489,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
   NSURL *redirectedFromURL_;
   NSString *logRequestBody_;
   NSString *logResponseBody_;
+  BOOL hasLoggedError_;
   BOOL shouldDeferResponseBodyLogging_;
 #endif
 }
