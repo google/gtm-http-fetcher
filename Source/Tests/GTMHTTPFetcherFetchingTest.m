@@ -573,23 +573,21 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   GTMHTTPFetcher *fetcher;
 
   NSString *invalidFile = [kValidFileName stringByAppendingString:@"?status=503"];
-  NSString *urlString = [self localURLStringToTestFileName:invalidFile];
+  NSString *invalidFileURLString = [self localURLStringToTestFileName:invalidFile];
 
-  SEL countRetriesSel = @selector(countRetriesfetcher:willRetry:forError:);
+  SEL countRetriesSel = @selector(countRetriesFetcher:willRetry:forError:);
   SEL fixRequestSel = @selector(fixRequestFetcher:willRetry:forError:);
 
   //
   // test: retry until timeout, then expect failure with status message
   //
 
-  NSNumber *lotsOfRetriesNumber = [NSNumber numberWithInt:1000];
-
-  fetcher= [self doFetchWithURLString:urlString
-                     cachingDatedData:NO
-                        retrySelector:countRetriesSel
-                     maxRetryInterval:5.0 // retry intervals of 1, 2, 4
-                           credential:nil
-                             userData:lotsOfRetriesNumber];
+  fetcher = [self doFetchWithURLString:invalidFileURLString
+                      cachingDatedData:NO
+                         retrySelector:countRetriesSel
+                      maxRetryInterval:5.0 // retry intervals of 1, 2, 4
+                            credential:nil
+                              userData:@1000];
 
   STAssertNotNil(fetchedData_, @"error data is expected");
   STAssertEquals(fetchedStatus_, 503,
@@ -597,18 +595,37 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertEquals([fetcher retryCount], (NSUInteger) 3, @"retry count unexpected");
 
   //
+  // test: retry with server sleep to force timeout, then expect failure with status 408
+  // after first retry
+  //
+  [self resetFetchResponse];
+
+  NSString *timeoutFile = [kValidFileName stringByAppendingString:@"?sleep=10"];
+  NSString *timeoutFileURLString = [self localURLStringToTestFileName:timeoutFile];
+
+  fetcher = [self doFetchWithURLString:timeoutFileURLString
+                      cachingDatedData:NO
+                         retrySelector:countRetriesSel
+                      maxRetryInterval:5.0 // retry interval of 1, then exceed 3*max timout
+                            credential:nil
+                              userData:@1000];
+
+  STAssertNotNil(fetchedData_, @"error data is expected");
+  STAssertEquals(fetchedStatus_, 408,
+                 @"fetchedStatus_ should be 408, was %@", fetchedStatus_);
+  STAssertEquals([fetcher retryCount], (NSUInteger)1, @"retry count unexpected");
+
+  //
   // test:  retry twice, then give up
   //
   [self resetFetchResponse];
 
-  NSNumber *twoRetriesNumber = [NSNumber numberWithInt:2];
-
-  fetcher= [self doFetchWithURLString:urlString
-                     cachingDatedData:NO
-                        retrySelector:countRetriesSel
-                     maxRetryInterval:10.0 // retry intervals of 1, 2, 4, 8
-                           credential:nil
-                             userData:twoRetriesNumber];
+  fetcher = [self doFetchWithURLString:invalidFileURLString
+                      cachingDatedData:NO
+                         retrySelector:countRetriesSel
+                      maxRetryInterval:10.0 // retry intervals of 1, 2, 4, 8
+                            credential:nil
+                              userData:@2];
 
   STAssertNotNil(fetchedData_, @"error data is expected");
   STAssertEquals(fetchedStatus_, 503,
@@ -622,12 +639,12 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   //
   [self resetFetchResponse];
 
-  fetcher= [self doFetchWithURLString:urlString
-                     cachingDatedData:NO
-                        retrySelector:fixRequestSel
-                     maxRetryInterval:30.0 // should only retry once due to selector
-                           credential:nil
-                             userData:lotsOfRetriesNumber];
+  fetcher = [self doFetchWithURLString:invalidFileURLString
+                      cachingDatedData:NO
+                         retrySelector:fixRequestSel
+                      maxRetryInterval:30.0 // should only retry once due to selector
+                            credential:nil
+                              userData:@1000];
 
   STAssertNotNil(fetchedData_, @"data is expected");
   STAssertEquals(fetchedStatus_, 200,
@@ -635,10 +652,10 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   STAssertEquals([fetcher retryCount], (NSUInteger) 1, @"retry count unexpected");
 
   // check the notifications
-  STAssertEquals(fetchStartedNotificationCount_, 9, @"fetches started");
-  STAssertEquals(fetchStoppedNotificationCount_, 9, @"fetches stopped");
-  STAssertEquals(retryDelayStartedNotificationCount_, 6, @"retries started");
-  STAssertEquals(retryDelayStoppedNotificationCount_, 6, @"retries started");
+  STAssertEquals(fetchStartedNotificationCount_, 11, @"fetches started");
+  STAssertEquals(fetchStoppedNotificationCount_, 11, @"fetches stopped");
+  STAssertEquals(retryDelayStartedNotificationCount_, 7, @"retries started");
+  STAssertEquals(retryDelayStoppedNotificationCount_, 7, @"retries started");
 }
 
 #pragma mark Upload fetches
@@ -851,7 +868,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
   // add a property to the fetcher that our progress callback will look for to
   // know when to pause and resume the upload
   fetcher.sentDataSelector = progressSel;
-  [fetcher setProperty:[NSNumber numberWithInt:20000]
+  [fetcher setProperty:@20000
                 forKey:kPauseAtKey];
 
   [fetcher beginFetchWithDelegate:self
@@ -895,7 +912,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
 totalBytesExpectedToSend:expectedBytes];
   }];
 
-  [fetcher setProperty:[NSNumber numberWithInt:20000]
+  [fetcher setProperty:@20000
                 forKey:kPauseAtKey];
 
   [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
@@ -939,7 +956,7 @@ totalBytesExpectedToSend:expectedBytes];
 
   // add a property to the fetcher that our progress callback will look for to
   // know when to retry the upload
-  [fetcher setProperty:[NSNumber numberWithInt:70000]
+  [fetcher setProperty:@70000
                 forKey:kRetryAtKey];
 
   [fetcher beginFetchWithDelegate:self
@@ -988,7 +1005,7 @@ totalBytesExpectedToSend:expectedBytes];
 
   // add a property to the fetcher that our progress callback will look for to
   // know when to retry the upload
-  [fetcher setProperty:[NSNumber numberWithInt:70000]
+  [fetcher setProperty:@70000
                 forKey:kRetryAtKey];
 
   [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
@@ -1189,7 +1206,7 @@ totalBytesExpectedToSend:expectedBytes];
 
 // Selector for allowing up to N retries, where N is an NSNumber in the
 // fetcher's userData
-- (BOOL)countRetriesfetcher:(GTMHTTPFetcher *)fetcher
+- (BOOL)countRetriesFetcher:(GTMHTTPFetcher *)fetcher
                   willRetry:(BOOL)suggestedWillRetry
                    forError:(NSError *)error {
 
@@ -1206,9 +1223,12 @@ totalBytesExpectedToSend:expectedBytes];
   NSData *statusData = [[error userInfo] objectForKey:kGTMHTTPFetcherStatusDataKey];
   NSString *dataStr = [[[NSString alloc] initWithData:statusData
                                              encoding:NSUTF8StringEncoding] autorelease];
-  NSString *expectedStr = @"{ \"error\" : { \"message\" : \"Server Status 503\", \"code\" : 503 } }";
-  STAssertEqualObjects(dataStr, expectedStr, nil);
-
+  NSInteger code = [error code];
+  if (code == 503) {
+    NSString *expectedStr =
+        @"{ \"error\" : { \"message\" : \"Server Status 503\", \"code\" : 503 } }";
+    STAssertEqualObjects(dataStr, expectedStr, nil);
+  }
   return shouldRetry;
 }
 

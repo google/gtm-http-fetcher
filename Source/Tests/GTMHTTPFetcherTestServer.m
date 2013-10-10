@@ -217,7 +217,12 @@
                           resultStatus, resultStatus];
     data = [errorStr dataUsingEncoding:NSUTF8StringEncoding];
   } else {
-    if (ifMatch != nil && ![ifMatch isEqual:etag]) {
+    NSString *sleepStr = [self valueForParameter:@"sleep" query:query];
+    if (sleepStr) {
+      NSTimeInterval interval = [sleepStr doubleValue];
+      [NSThread sleepForTimeInterval:interval];
+      resultStatus = 408; // request timeout
+    } else if (ifMatch != nil && ![ifMatch isEqual:etag]) {
       // there is no match, hence this is an inconsistent PUT or DELETE
       resultStatus = 412; // precondition failed
     } else if (ifNoneMatch != nil && [ifNoneMatch isEqual:etag]) {

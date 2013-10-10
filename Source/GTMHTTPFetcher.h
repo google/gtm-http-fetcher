@@ -481,6 +481,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
   NSTimeInterval minRetryInterval_; // random between 1 and 2 seconds
   NSTimeInterval retryFactor_;      // default interval multiplier is 2
   NSTimeInterval lastRetryInterval_;
+  NSDate *initialRequestDate_;
   BOOL hasAttemptedAuthRefresh_;
 
   NSString *comment_;               // comment for log

@@ -217,6 +217,7 @@ static NSString *const kCallbackError = @"error";
   [serviceHost_ release];
   [thread_ release];
   [retryTimer_ release];
+  [initialRequestDate_ release];
   [comment_ release];
   [log_ release];
 #if !STRIP_GTM_FETCH_LOGGING
@@ -425,6 +426,10 @@ static NSString *const kCallbackError = @"error";
     }
   }
 #endif
+
+  if (!initialRequestDate_) {
+    initialRequestDate_ = [[NSDate alloc] init];
+  }
 
   // Once connection_ is non-nil we can send the start notification
   isStopNotificationNeeded_ = YES;
@@ -959,10 +964,16 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
 #if NS_BLOCKS_AVAILABLE
   void (^block)(NSData *, NSError *);
 #endif
+
+  // If -stopFetching is called in another thread directly after this @synchronized stanza finishes
+  // on this thread, then target and block could be released before being used in this method. So
+  // retain each until this method is done with them.
   @synchronized(self) {
-    target = delegate_;
+    target = [[delegate_ retain] autorelease];
     sel = finishedSel_;
-    block = completionBlock_;
+#if NS_BLOCKS_AVAILABLE
+    block = [[completionBlock_ retain] autorelease];
+#endif
   }
 
   [[self retain] autorelease];  // In case the callback releases us
@@ -1403,6 +1414,21 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
   // Determine if we're doing exponential backoff retries
   BOOL shouldDoIntervalRetry = [self isRetryEnabled]
     && ([self nextRetryInterval] < [self maxRetryInterval]);
+
+  if (shouldDoIntervalRetry) {
+    // If an explicit max retry interval was set, we expect repeated backoffs to take
+    // up to roughly twice that for repeated fast failures.  If the initial attempt is
+    // already more than 3 times the max retry interval, then failures have taken a long time
+    // (such as from network timeouts) so don't retry again to avoid the app becoming
+    // unexpectedly unresponsive.
+    if (maxRetryInterval_ > kUnsetMaxRetryInterval) {
+      NSTimeInterval maxAllowedIntervalBeforeRetry = maxRetryInterval_ * 3;
+      NSTimeInterval timeSinceInitialRequest = -[initialRequestDate_ timeIntervalSinceNow];
+      if (timeSinceInitialRequest > maxAllowedIntervalBeforeRetry) {
+        shouldDoIntervalRetry = NO;
+      }
+    }
+  }
 
   BOOL willRetry = NO;
   BOOL canRetry = shouldRetryForAuthRefresh || shouldDoIntervalRetry;
