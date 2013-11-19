@@ -90,6 +90,7 @@ static NSString *const kCallbackError = @"error";
                       error:(NSError *)error;
 - (void)invokeFetchCallbacksOnDelegateQueueWithData:(NSData *)data
                                               error:(NSError *)error;
+- (void)invokeOnQueueWithDictionary:(NSDictionary *)dict;
 - (void)releaseCallbacks;
 
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
