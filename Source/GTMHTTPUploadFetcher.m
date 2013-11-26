@@ -27,6 +27,7 @@ static NSUInteger const kQueryServerForOffset = NSUIntegerMax;
 @interface GTMHTTPFetcher (ProtectedMethods)
 @property (readwrite, retain) NSData *downloadedData;
 - (void)releaseCallbacks;
+- (void)stopFetchReleasingCallbacks:(BOOL)shouldReleaseCallbacks;
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection;
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
 @end
@@ -379,6 +380,8 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   [self setStatusCode:statusCode];
 
   if (statusCode >= 300) {
+    if (retryTimer_) return;
+
     NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
                                          code:statusCode
                                      userInfo:nil];
@@ -434,6 +437,14 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   if (![self isPaused]) {
     [self uploadNextChunkWithOffset:0];
   }
+}
+
+- (void)retryFetch {
+  // Override the fetcher's retryFetch to retry with the saved delegateFinishedSEL_.
+  [self stopFetchReleasingCallbacks:NO];
+
+  [self beginFetchWithDelegate:delegate_
+             didFinishSelector:delegateFinishedSEL_];
 }
 
 #pragma mark Chunk fetching methods

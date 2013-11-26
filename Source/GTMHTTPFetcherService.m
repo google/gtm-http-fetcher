@@ -168,7 +168,8 @@
 
     if ([host length] == 0) {
 #if DEBUG
-      NSAssert1(0, @"%@ lacks host", fetcher);
+      // Data URIs legitimately have no host, reject other hostless URLs.
+      NSAssert1([[requestURL scheme] isEqual:@"data"], @"%@ lacks host", fetcher);
 #endif
       return YES;
     }
