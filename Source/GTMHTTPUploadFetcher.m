@@ -379,45 +379,55 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   NSInteger statusCode = [super statusCode];
   [self setStatusCode:statusCode];
 
-  if (statusCode >= 300) {
-    if (retryTimer_) return;
-
-    NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
-                                         code:statusCode
-                                     userInfo:nil];
-    [self invokeFinalCallbacksWithData:[self downloadedData]
-                                 error:error
-              shouldInvalidateLocation:YES];
-    return;
-  }
-
-#if DEBUG
-  // The initial response of the resumable upload protocol should have an
-  // empty body
-  //
-  // This assert typically happens because the upload create/edit link URL was
-  // not supplied with the request, and the server is thus expecting a non-
-  // resumable request/response.
-  NSAssert([[self downloadedData] length] == 0,
-                    @"unexpected response data (uploading to the wrong URL?)");
-#endif
+  NSData *downloadedData = [self downloadedData];
 
   // we need to get the upload URL from the location header to continue
   NSDictionary *responseHeaders = [self responseHeaders];
   NSString *locationURLStr = [responseHeaders objectForKey:@"Location"];
+
+  NSError *error = nil;
+
+  if (statusCode >= 300) {
+    if (retryTimer_) return;
+
+    error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
+                                code:statusCode
+                            userInfo:nil];
+  } else if ([downloadedData length] > 0) {
+    // The initial response of the resumable upload protocol should have an
+    // empty body
+    //
+    // This problem typically happens because the upload create/edit link URL was
+    // not supplied with the request, and the server is thus expecting a non-
+    // resumable request/response. It may also happen if an error JSON error body
+    // is returned.
+    //
+    // We'll consider this status 501 Not Implemented rather than try to parse
+    // the body to determine the actual error, but will provide the data
+    // as userInfo for clients to inspect.
+    NSDictionary *userInfo = [NSDictionary dictionaryWithObject:downloadedData
+                                                         forKey:kGTMHTTPFetcherStatusDataKey];
+    error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
+                                code:501
+                            userInfo:userInfo];
+  } else {
 #if DEBUG
-  NSAssert([locationURLStr length] > 0, @"need upload location hdr");
+    NSAssert([locationURLStr length] > 0, @"need upload location hdr");
 #endif
 
-  if ([locationURLStr length] == 0) {
-    // we cannot continue since we do not know the location to use
-    // as our upload destination
-    //
-    // we'll consider this status 501 Not Implemented
-    NSError *error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
-                                         code:501
-                                     userInfo:nil];
-    [self invokeFinalCallbacksWithData:[self downloadedData]
+    if ([locationURLStr length] == 0) {
+      // we cannot continue since we do not know the location to use
+      // as our upload destination
+      //
+      // we'll consider this status 501 Not Implemented
+      error = [NSError errorWithDomain:kGTMHTTPFetcherStatusDomain
+                                  code:501
+                              userInfo:nil];
+    }
+  }
+
+  if (error) {
+    [self invokeFinalCallbacksWithData:downloadedData
                                  error:error
               shouldInvalidateLocation:YES];
     return;
