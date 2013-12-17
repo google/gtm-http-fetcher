@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-#import <SenTestingKit/SenTestingKit.h>
+#import <XCTest/XCTest.h>
 
 #import "GTMGatherInputStream.h"
 
-@interface GTMGatherInputStreamTest : SenTestCase
+@interface GTMGatherInputStreamTest : XCTestCase
 @end
 
 @implementation GTMGatherInputStreamTest
@@ -55,11 +55,11 @@
 
   NSString *readString = [NSString stringWithUTF8String:(const char * )buffer];
 
-  STAssertEqualObjects(readString, expectedResultString, @"bad read (%@)",
+  XCTAssertEqualObjects(readString, expectedResultString, @"bad read (%@)",
                        testMethod);
 
   NSInteger expectedLength = [expectedResultString length];
-  STAssertEquals(bytesRead, expectedLength, @"bad read length (%@)",
+  XCTAssertEqual(bytesRead, expectedLength, @"bad read length (%@)",
                  testMethod);
 }
 

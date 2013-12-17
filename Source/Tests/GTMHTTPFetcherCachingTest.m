@@ -17,7 +17,7 @@
 //  GTMHTTPFetcherCachingTest.m
 //
 
-#import <SenTestingKit/SenTestingKit.h>
+#import <XCTest/XCTest.h>
 
 #import "GTMHTTPFetcher.h"
 
@@ -53,7 +53,7 @@
 - (void)removeAllCookies;
 @end
 
-@interface GTMHTTPFetcherCachingTest : SenTestCase
+@interface GTMHTTPFetcherCachingTest : XCTestCase
 @end
 
 @implementation GTMHTTPFetcherCachingTest
@@ -86,7 +86,7 @@
 
     GTMCachedURLResponse *cachedResponse;
     NSData *data = [@"1234567890" dataUsingEncoding:NSUTF8StringEncoding];
-    STAssertEquals([data length], (NSUInteger) 10, @"data should be 10 bytes");
+    XCTAssertEqual([data length], (NSUInteger) 10, @"data should be 10 bytes");
 
     cachedResponse = [[[GTMCachedURLResponse alloc] initWithResponse:response
                                                                   data:data] autorelease];
@@ -110,10 +110,10 @@
     cachedResponse = [cache cachedResponseForRequest:request];
     if (idx == 1 || idx >= 4) {
       expectedResponse = [cachedResponses objectAtIndex:idx];
-      STAssertEqualObjects(cachedResponse, expectedResponse, @"wrong response");
+      XCTAssertEqualObjects(cachedResponse, expectedResponse, @"wrong response");
     } else {
       // these should be pruned out
-      STAssertNil(cachedResponse, @"unexpected response present");
+      XCTAssertNil(cachedResponse, @"unexpected response present");
     }
   }
 
@@ -139,10 +139,10 @@
     cachedResponse = [cache cachedResponseForRequest:request];
     if (idx == 0 || idx >= 4) {
       expectedResponse = [cachedResponses objectAtIndex:idx];
-      STAssertEqualObjects(cachedResponse, expectedResponse, @"wrong response");
+      XCTAssertEqualObjects(cachedResponse, expectedResponse, @"wrong response");
     } else {
       // these should be aged out
-      STAssertNil(cachedResponse, @"unexpected response present");
+      XCTAssertNil(cachedResponse, @"unexpected response present");
     }
   }
 
@@ -166,11 +166,11 @@
                   forRequest:hugeRequest];
 
   // verify that the response wasn't really stored in the cache
-  STAssertEquals([[cache responses] count], (NSUInteger)3,
+  XCTAssertEqual([[cache responses] count], (NSUInteger)3,
                  @"huge not ignored");
   GTMCachedURLResponse *foundResponse;
   foundResponse = [cache cachedResponseForRequest:hugeRequest];
-  STAssertNil(foundResponse, @"huge was cached");
+  XCTAssertNil(foundResponse, @"huge was cached");
 
   // make the huge response size just right for pushing everything else out of
   // the cache
@@ -181,10 +181,10 @@
                   forRequest:hugeRequest];
 
   // verify that it crowded out the other responses
-  STAssertEquals([[cache responses] count], (NSUInteger)1,
+  XCTAssertEqual([[cache responses] count], (NSUInteger)1,
                  @"huge didn't fill the cache");
   foundResponse = [cache cachedResponseForRequest:hugeRequest];
-  STAssertNotNil(foundResponse, @"huge was not cached");
+  XCTAssertNotNil(foundResponse, @"huge was not cached");
 }
 
 - (void)testCookieStorage {
@@ -195,7 +195,7 @@
   NSURL *subdomainURL = [NSURL URLWithString:@"http://frogbreath.example.com"];
 
   foundCookies = [cookieStorage cookiesForURL:fullURL];
-  STAssertEquals([foundCookies count], (NSUInteger) 0, @"no cookies expected");
+  XCTAssertEqual([foundCookies count], (NSUInteger) 0, @"no cookies expected");
 
   // make two unique cookies
   NSDictionary *cookie1Props = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -234,21 +234,21 @@
   [cookieStorage setCookies:array];
 
   foundCookies = [cookieStorage cookiesForURL:fullURL];
-  STAssertEquals([foundCookies count], (NSUInteger) 2,
+  XCTAssertEqual([foundCookies count], (NSUInteger) 2,
                  @"full domain cookie retrieval");
 
   foundCookies = [cookieStorage cookiesForURL:subdomainURL];
-  STAssertEquals((int)[foundCookies count], 1, @"subdomain cookie retrieval");
+  XCTAssertEqual((int)[foundCookies count], 1, @"subdomain cookie retrieval");
 
   // store cookie 2a, replacing cookie 2
   array = [NSArray arrayWithObject:testCookie2a];
   [cookieStorage setCookies:array];
 
   foundCookies = [cookieStorage cookiesForURL:subdomainURL];
-  STAssertEquals((int)[foundCookies count], 1, @"subdomain 2a retrieval");
+  XCTAssertEqual((int)[foundCookies count], 1, @"subdomain 2a retrieval");
 
   NSHTTPCookie *foundCookie = [foundCookies lastObject];
-  STAssertEqualObjects([foundCookie value], [testCookie2a value],
+  XCTAssertEqualObjects([foundCookie value], [testCookie2a value],
                  @"cookie replacement");
 
   // wait for cookie 2a to expire, then remove expired cookies
@@ -264,12 +264,12 @@
   //
   //  foundCookies = [cookieStorage cookiesForURL:fullURL];
   //  STAssertEquals((int)[foundCookies count], 1, @"pruned removal remaining");
-  STAssertNil([testCookie2a expiresDate], nil);
+  XCTAssertNil([testCookie2a expiresDate]);
 
   // remove all cookies
   [cookieStorage removeAllCookies];
   foundCookies = [cookieStorage cookiesForURL:fullURL];
-  STAssertEquals((int)[foundCookies count], 0, @"remove all");
+  XCTAssertEqual((int)[foundCookies count], 0, @"remove all");
 }
 
 @end

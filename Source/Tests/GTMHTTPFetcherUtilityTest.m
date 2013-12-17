@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#import <SenTestingKit/SenTestingKit.h>
+#import <XCTest/XCTest.h>
 
 #import "GTMHTTPFetcher.h"
 #import "GTMHTTPFetcherLogging.h"
 
-@interface GTMHTTPFetcherUtilityTest : SenTestCase
+@interface GTMHTTPFetcherUtilityTest : XCTestCase
 @end
 
 @interface GTMHTTPFetcher (GTMHTTPFetcherLoggingInternal)
@@ -38,7 +38,7 @@
   NSString *result = [GTMHTTPFetcher snipSubstringOfString:orig
                                         betweenStartString:@"jkl"
                                                  endString:@"mno"];
-  STAssertEqualObjects(result, expected, @"simple snip to end failure");
+  XCTAssertEqualObjects(result, expected, @"simple snip to end failure");
 
   // snip the middle
   orig = @"abcdefg";
@@ -46,7 +46,7 @@
   result = [GTMHTTPFetcher snipSubstringOfString:orig
                               betweenStartString:@"abcd"
                                        endString:@"fg"];
-  STAssertEqualObjects(result, expected, @"simple snip in the middle failure");
+  XCTAssertEqualObjects(result, expected, @"simple snip in the middle failure");
 
   // snip to the end
   orig = @"abcdefg";
@@ -54,7 +54,7 @@
   result = [GTMHTTPFetcher snipSubstringOfString:orig
                               betweenStartString:@"abcd"
                                        endString:@"xyz"];
-  STAssertEqualObjects(result, expected, @"simple snip to end failure");
+  XCTAssertEqualObjects(result, expected, @"simple snip to end failure");
 
   // start string not found, so nothing should be snipped
   orig = @"abcdefg";
@@ -62,7 +62,7 @@
   result = [GTMHTTPFetcher snipSubstringOfString:orig
                               betweenStartString:@"jkl"
                                        endString:@"mno"];
-  STAssertEqualObjects(result, expected, @"simple snip to end failure");
+  XCTAssertEqualObjects(result, expected, @"simple snip to end failure");
 
   // nothing between start and end
   orig = @"abcdefg";
@@ -70,7 +70,7 @@
   result = [GTMHTTPFetcher snipSubstringOfString:orig
                               betweenStartString:@"abcd"
                                        endString:@"efg"];
-  STAssertEqualObjects(result, expected, @"snip of empty string failure");
+  XCTAssertEqualObjects(result, expected, @"snip of empty string failure");
 
   // snip like in OAuth
   orig = @"OAuth oauth_consumer_key=\"example.net\", "
@@ -82,32 +82,32 @@
   result = [GTMHTTPFetcher snipSubstringOfString:orig
                               betweenStartString:@"oauth_token=\""
                                        endString:@"\""];
-  STAssertEqualObjects(result, expected, @"realistic snip failure");
+  XCTAssertEqualObjects(result, expected, @"realistic snip failure");
 }
 #endif
 
 - (void)testGTMCleanedUserAgentString {
   NSString *result = GTMCleanedUserAgentString(nil);
   NSString *expected = nil;
-  STAssertEqualObjects(result, expected, nil);
+  XCTAssertEqualObjects(result, expected);
 
   result = GTMCleanedUserAgentString(@"");
   expected = @"";
-  STAssertEqualObjects(result, expected, nil);
+  XCTAssertEqualObjects(result, expected);
 
   result = GTMCleanedUserAgentString(@"frog in tree/[1.2.3]");
   expected = @"frog_in_tree1.2.3";
-  STAssertEqualObjects(result, expected, nil);
+  XCTAssertEqualObjects(result, expected);
 
   result = GTMCleanedUserAgentString(@"\\iPod ({Touch])\n\r");
   expected = @"iPod_Touch";
-  STAssertEqualObjects(result, expected, nil);
+  XCTAssertEqualObjects(result, expected);
 }
 
 - (void)testGTMSystemVersionString {
 #if TARGET_OS_MAC && !TARGET_OS_IPHONE
   NSString *result = GTMSystemVersionString();
-  STAssertTrue([result hasPrefix:@"MacOSX/"], nil);
+  XCTAssertTrue([result hasPrefix:@"MacOSX/"]);
 #else
   STAssertTrue(NO, @"Add system version string test for this configuration");
 #endif
@@ -116,6 +116,6 @@
 - (void)testGTMApplicationIdentifier {
   NSBundle *bundle = [NSBundle bundleForClass:[self class]];
   NSString *result = GTMApplicationIdentifier(bundle);
-  STAssertEqualObjects(result, @"com.yourcompany.UnitTests/1.0", nil);
+  XCTAssertEqualObjects(result, @"com.yourcompany.UnitTests/1.0");
 }
 @end

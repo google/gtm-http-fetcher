@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#import <SenTestingKit/SenTestingKit.h>
+#import <XCTest/XCTest.h>
 
 #import "GTMMIMEDocument.h"
 
 // /Developer/Tools/otest LighthouseAPITest.octest
 
-@interface GTMMIMEDocumentTest : SenTestCase
+@interface GTMMIMEDocumentTest : XCTestCase
 @end
 
 @implementation GTMMIMEDocumentTest
@@ -43,10 +43,10 @@
 
   NSString *readString = [NSString stringWithUTF8String:(const char * )buffer];
 
-  STAssertEqualObjects(readString, expectedResultString, @"bad read (%@)",
+  XCTAssertEqualObjects(readString, expectedResultString, @"bad read (%@)",
                        NSStringFromSelector(callingMethod));
 
-  STAssertEquals(bytesRead, expectedLength, @"bad read length (%@)",
+  XCTAssertEqual(bytesRead, expectedLength, @"bad read length (%@)",
                  NSStringFromSelector(callingMethod));
 }
 
@@ -64,12 +64,12 @@
                     length:&length
                   boundary:&boundary];
 
-  STAssertEqualObjects(boundary, @"END_OF_PART", @"bad boundary");
+  XCTAssertEqualObjects(boundary, @"END_OF_PART", @"bad boundary");
 
   NSString *expectedString = @"\r\n--END_OF_PART--\r\n";
   NSUInteger expectedLength = [expectedString length];
 
-  STAssertEquals((NSUInteger)length, expectedLength,
+  XCTAssertEqual((NSUInteger)length, expectedLength,
                  @"Reported document length should be expected length.");
 
   [self doReadTestForInputStream:stream
@@ -105,11 +105,11 @@
                                     "Hi mom"
                                     "\r\n--%@--\r\n", boundary, boundary];
 
-  STAssertEqualObjects(boundary, @"END_OF_PART", @"bad boundary");
+  XCTAssertEqualObjects(boundary, @"END_OF_PART", @"bad boundary");
 
   NSUInteger expectedLength = [expectedResultString length];
 
-  STAssertEquals((NSUInteger)length, expectedLength,
+  XCTAssertEqual((NSUInteger)length, expectedLength,
                  @"Reported document length should be expected length.");
 
   // now read the document from the input stream

@@ -17,11 +17,11 @@
 //  GTMReadMonitorInputStreamTest.m
 //
 
-#import <SenTestingKit/SenTestingKit.h>
+#import <XCTest/XCTest.h>
 
 #import "GTMReadMonitorInputStream.h"
 
-@interface GTMReadMonitorInputStreamTest : SenTestCase {
+@interface GTMReadMonitorInputStreamTest : XCTestCase {
   NSMutableData *monitoredData_;
 }
 @end
@@ -75,11 +75,11 @@
   [monitorStream close];
 
   // Verify we read all the data
-  STAssertEqualObjects(readData, testData,
+  XCTAssertEqualObjects(readData, testData,
                        @"read data doesn't match stream data");
 
   // Verify the callback saw the same data
-  STAssertEqualObjects(monitoredData_, testData,
+  XCTAssertEqualObjects(monitoredData_, testData,
                        @"callback progress doesn't match actual progress");
 }
 
