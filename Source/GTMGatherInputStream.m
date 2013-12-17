@@ -171,6 +171,10 @@
   [invocation invokeWithTarget:[NSInputStream class]];
 }
 
+- (BOOL)respondsToSelector:(SEL)selector {
+  return [dummyStream_ respondsToSelector:selector];
+}
+
 - (NSMethodSignature*)methodSignatureForSelector:(SEL)selector {
   return [dummyStream_ methodSignatureForSelector:selector];
 }
