@@ -31,7 +31,7 @@ static NSString *const kHTTPLogsCell = @"kGTMHTTPLogsCell";
 // A minimal controller will be used to wrap a web view for displaying the
 // log files.
 @interface GTMHTTPFetcherLoggingWebViewController : UIViewController<UIWebViewDelegate>
-- (id)initWithURL:(NSURL *)htmlURL title:(NSString *)title;
+- (id)initWithURL:(NSURL *)htmlURL title:(NSString *)title opensScrolledToEnd:(BOOL)opensScrolled;
 @end
 
 #pragma mark - Table View Controller
@@ -42,6 +42,7 @@ static NSString *const kHTTPLogsCell = @"kGTMHTTPLogsCell";
 
 @implementation GTMHTTPFetcherLogViewController {
   NSArray *logsFolderURLs_;
+  BOOL opensScrolledToEnd_;
 }
 
 @synthesize callbackBlock = callbackBlock_;
@@ -103,6 +104,10 @@ static NSString *const kHTTPLogsCell = @"kGTMHTTPLogsCell";
   NSAssert(self.navigationController != nil, @"Need a UINavigationController");
 }
 
+- (void)setOpensScrolledToEnd:(BOOL)opensScrolledToEnd {
+  opensScrolledToEnd_ = opensScrolledToEnd;
+}
+
 #pragma mark -
 
 - (NSString *)shortenedNameForURL:(NSURL *)url {
@@ -150,7 +155,8 @@ static NSString *const kHTTPLogsCell = @"kGTMHTTPLogsCell";
   NSString *title = [self shortenedNameForURL:folderURL];
   UIViewController *webViewController =
       [[[GTMHTTPFetcherLoggingWebViewController alloc] initWithURL:htmlURL
-                                                             title:title] autorelease];
+                   title:title
+      opensScrolledToEnd:opensScrolledToEnd_] autorelease];
 
   UINavigationController *navController = [self navigationController];
   [navController pushViewController:webViewController animated:YES];
@@ -197,15 +203,18 @@ static NSString *const kHTTPLogsCell = @"kGTMHTTPLogsCell";
 #pragma mark - Minimal WebView Controller
 
 @implementation GTMHTTPFetcherLoggingWebViewController {
+  BOOL opensScrolledToEnd_;
   NSURL *htmlURL_;
 }
 
 - (instancetype)initWithURL:(NSURL *)htmlURL
-                      title:(NSString *)title {
+                      title:(NSString *)title
+         opensScrolledToEnd:(BOOL)opensScrolledToEnd {
   self = [super initWithNibName:nil bundle:nil];
   if (self) {
     self.title = title;
     htmlURL_ = [htmlURL retain];
+    opensScrolledToEnd_ = opensScrolledToEnd;
   }
   return self;
 }
@@ -239,6 +248,13 @@ static NSString *const kHTTPLogsCell = @"kGTMHTTPLogsCell";
 #pragma mark - WebView delegate
 
 - (void)webViewDidFinishLoad:(UIWebView *)webView {
+  if (opensScrolledToEnd_) {
+    // Scroll to the bottom, because the most recent entry is at the end.
+    NSString* javascript = [NSString stringWithFormat:@"window.scrollBy(0, %ld);", NSIntegerMax];
+    [[self webView] stringByEvaluatingJavaScriptFromString:javascript];
+    opensScrolledToEnd_ = NO;
+  }
+
   // Instead of the nav controller's back button, provide a simple
   // webview back button when it's needed.
   BOOL canGoBack = [webView canGoBack];

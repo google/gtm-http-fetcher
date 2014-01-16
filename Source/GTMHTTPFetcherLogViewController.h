@@ -47,6 +47,10 @@
 
 @interface GTMHTTPFetcherLogViewController : UITableViewController
 
+/// Sets whether to automatically scroll to the bottom of a run's log when viewed, to show the most
+/// recent entry (a run log's entries are written in chronological order). Default is NO.
+- (void)setOpensScrolledToEnd:(BOOL)opensScrolledToEnd;
+
 // This optional convenience method created a nav controller for use
 // by apps that do not have a standard UINavigationController, as shown
 // in the code snippet above.
