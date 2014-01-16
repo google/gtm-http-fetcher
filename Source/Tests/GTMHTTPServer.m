@@ -29,8 +29,14 @@
 #ifndef _GTMDevLog
 #define _GTMDevLog NSLog
 #endif
+
+#ifndef GTM_STATIC_CAST
 #define GTM_STATIC_CAST(type, object) ((type *) (object))
-#define GTMCFAutorelease(x) [NSMakeCollectable(x) autorelease]
+#endif
+
+#ifndef GTMCFAutorelease
+#define GTMCFAutorelease(x) ([(id)x autorelease])
+#endif
 
 @interface GTMHTTPServer (PrivateMethods)
 - (void)acceptedConnectionNotification:(NSNotification *)notification;
