@@ -324,7 +324,7 @@ void GTMAssertSelectorNilOrImplementedWithArgs(id obj, SEL sel, ...);
 // the full user-agent string.
 NSString *GTMCleanedUserAgentString(NSString *str);
 
-// Make an identifier like "MacOSX/10.7.1" or "iPod_Touch/4.1"
+// Make an identifier like "MacOSX/10.7.1" or "iPod_Touch/4.1 hw/iPod1_1"
 NSString *GTMSystemVersionString(void);
 
 // Make a generic name and version for the current application, like
@@ -749,6 +749,11 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // NSURLConnection.
 + (Class)connectionClass;
 + (void)setConnectionClass:(Class)theClass;
+
+//
+// Newer synonym for postData.
+//
+@property (retain) NSData *bodyData;
 
 // Spin the run loop, discarding events, until the fetch has completed
 //

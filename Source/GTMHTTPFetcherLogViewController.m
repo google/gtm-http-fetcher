@@ -233,6 +233,7 @@ static NSString *const kHTTPLogsCell = @"kGTMHTTPLogsCell";
 }
 
 - (void)viewDidLoad {
+  [super viewDidLoad];
   NSURLRequest *request = [NSURLRequest requestWithURL:htmlURL_];
   [[self webView] loadRequest:request];
 }

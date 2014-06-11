@@ -75,8 +75,6 @@ static NSString *const kExpiredBearerValue = @"Bearer expired";
 
 @implementation GTMHTTPFetcherFetchingTest
 
-static const NSTimeInterval kRunLoopInterval = 0.01;
-
 //  The wrong-fetch test can take >10s to pass.
 static const NSTimeInterval kGiveUpInterval = 30.0;
 
@@ -288,6 +286,70 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   // check the notifications
   XCTAssertEqual(fetchStartedNotificationCount_, 4, @"fetches started");
   XCTAssertEqual(fetchStoppedNotificationCount_, 4, @"fetches stopped");
+  XCTAssertEqual(retryDelayStartedNotificationCount_, 0, @"retries started");
+  XCTAssertEqual(retryDelayStoppedNotificationCount_, 0, @"retries started");
+}
+
+- (void)testFailToBeginFetch {
+  if (!isServerRunning_) return;
+  [self resetNotificationCounts];
+  [self resetFetchResponse];
+
+  //
+  // Test with delegate/selector callback.
+  //
+  NSString *urlString = [self localURLStringToTestFileName:kValidFileName];
+  NSURL *url = [NSURL URLWithString:urlString];
+  NSURLRequest *req = [NSURLRequest requestWithURL:url
+                                       cachePolicy:NSURLRequestReloadIgnoringCacheData
+                                   timeoutInterval:kGiveUpInterval];
+  GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  XCTAssertNotNil(fetcher);
+
+  fetcher.delegateQueue = [NSOperationQueue mainQueue];
+  [fetcher setProperty:@YES forKey:@"_CannotBeginFetch"];
+
+  BOOL isFetching = [fetcher beginFetchWithDelegate:self
+                                  didFinishSelector:@selector(testFetcher:finishedWithData:error:)];
+  XCTAssertFalse(isFetching);
+
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+
+  XCTAssertNil(fetchedData_);
+  XCTAssertNotNil(fetcherError_);
+  XCTAssertEqual([fetcherError_ code], -1);
+
+  XCTAssertEqual(fetchStartedNotificationCount_, 0, @"fetches started");
+  XCTAssertEqual(fetchStoppedNotificationCount_, 0, @"fetches stopped");
+  XCTAssertEqual(retryDelayStartedNotificationCount_, 0, @"retries started");
+  XCTAssertEqual(retryDelayStoppedNotificationCount_, 0, @"retries started");
+
+  [self resetNotificationCounts];
+  [self resetFetchResponse];
+
+  //
+  // Test with block callback.
+  //
+  fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  XCTAssertNotNil(fetcher);
+
+  fetcher.delegateQueue = [NSOperationQueue mainQueue];
+  [fetcher setProperty:@YES forKey:@"_CannotBeginFetch"];
+
+  __block BOOL hasFinishedFetching = NO;
+  isFetching = [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
+    XCTAssertNil(data);
+    XCTAssertEqual([error code], -1);
+    hasFinishedFetching = YES;
+  }];
+  XCTAssertFalse(isFetching);
+
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+
+  XCTAssertTrue(hasFinishedFetching);
+
+  XCTAssertEqual(fetchStartedNotificationCount_, 0, @"fetches started");
+  XCTAssertEqual(fetchStoppedNotificationCount_, 0, @"fetches stopped");
   XCTAssertEqual(retryDelayStartedNotificationCount_, 0, @"retries started");
   XCTAssertEqual(retryDelayStoppedNotificationCount_, 0, @"retries started");
 }

@@ -23,6 +23,8 @@
 #import <UIKit/UIKit.h>
 #endif
 
+#import <sys/utsname.h>
+
 static id <GTMCookieStorageProtocol> gGTMFetcherStaticCookieStorage = nil;
 static Class gGTMFetcherConnectionClass = nil;
 
@@ -44,6 +46,9 @@ static const NSTimeInterval kDefaultMaxDownloadRetryInterval = 60.0;
 static const NSTimeInterval kDefaultMaxUploadRetryInterval = 60.0 * 10.;
 
 // delegateQueue callback parameters
+static NSString *const kCallbackTarget = @"target";
+static NSString *const kCallbackSelector = @"sel";
+static NSString *const kCallbackBlock = @"block";
 static NSString *const kCallbackData = @"data";
 static NSString *const kCallbackError = @"error";
 
@@ -84,6 +89,11 @@ static NSString *const kCallbackError = @"error";
 
 - (void)invokeFetchCallbacksWithData:(NSData *)data
                                error:(NSError *)error;
+- (void)invokeFetchCallbacksWithTarget:(id)target
+                              selector:(SEL)sel
+                                 block:(id)block
+                                  data:(NSData *)data
+                                 error:(NSError *)error;
 - (void)invokeFetchCallback:(SEL)sel
                      target:(id)target
                        data:(NSData *)data
@@ -431,6 +441,13 @@ static NSString *const kCallbackError = @"error";
   if (!initialRequestDate_) {
     initialRequestDate_ = [[NSDate alloc] init];
   }
+
+#if DEBUG
+  // For testing only, look for a property indicating the fetch should immediately fail.
+  if ([self propertyForKey:@"_CannotBeginFetch"] != nil) {
+    goto CannotBeginFetch;
+  }
+#endif
 
   // Once connection_ is non-nil we can send the start notification
   isStopNotificationNeeded_ = YES;
@@ -964,6 +981,8 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
   SEL sel;
 #if NS_BLOCKS_AVAILABLE
   void (^block)(NSData *, NSError *);
+#else
+  id block = nil;
 #endif
 
   // If -stopFetching is called in another thread directly after this @synchronized stanza finishes
@@ -976,7 +995,18 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
     block = [[completionBlock_ retain] autorelease];
 #endif
   }
+  [self invokeFetchCallbacksWithTarget:target
+                              selector:sel
+                                 block:block
+                                  data:data
+                                 error:error];
+}
 
+- (void)invokeFetchCallbacksWithTarget:(id)target
+                              selector:(SEL)sel
+                                 block:(id)block
+                                  data:(NSData *)data
+                                 error:(NSError *)error {
   [[self retain] autorelease];  // In case the callback releases us
 
   [self invokeFetchCallback:sel
@@ -986,7 +1016,7 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
 
 #if NS_BLOCKS_AVAILABLE
   if (block) {
-    block(data, error);
+    ((void (^)(NSData *, NSError *))block)(data, error);
   }
 #endif
 }
@@ -1022,6 +1052,23 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
   NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity:2];
   [dict setValue:data forKey:kCallbackData];
   [dict setValue:error forKey:kCallbackError];
+
+  // If -stopFetching is called in another thread directly after this @synchronized stanza finishes
+  // on this thread, then target and block could be released before being used in this method. So
+  // retain each until this method is done with them.
+  @synchronized(self) {
+    id target = delegate_;
+    NSString *sel = finishedSel_ ? NSStringFromSelector(finishedSel_) : nil;
+#if NS_BLOCKS_AVAILABLE
+    void (^block)(NSData *, NSError *) = completionBlock_;
+#else
+    id block = nil;
+#endif
+    [dict setValue:target forKey:kCallbackTarget];
+    [dict setValue:sel forKey:kCallbackSelector];
+    [dict setValue:block forKey:kCallbackBlock];
+  }
+
   NSInvocationOperation *op =
     [[[NSInvocationOperation alloc] initWithTarget:self
                                           selector:@selector(invokeOnQueueWithDictionary:)
@@ -1030,12 +1077,20 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
 }
 
 - (void)invokeOnQueueWithDictionary:(NSDictionary *)dict {
+  id target = [dict objectForKey:kCallbackTarget];
+  NSString *selStr = [dict objectForKey:kCallbackSelector];
+  SEL sel = selStr ? NSSelectorFromString(selStr) : NULL;
+  id block = [dict objectForKey:kCallbackBlock];
+
   NSData *data = [dict objectForKey:kCallbackData];
   NSError *error = [dict objectForKey:kCallbackError];
 
-  [self invokeFetchCallbacksWithData:data error:error];
+  [self invokeFetchCallbacksWithTarget:target
+                              selector:sel
+                                 block:block
+                                  data:data
+                                 error:error];
 }
-
 
 - (void)invokeSentDataCallback:(SEL)sel
                         target:(id)target
@@ -1726,7 +1781,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
 - (id)userData {
   @synchronized(self) {
-    return userData_;
+    return [[userData_ retain] autorelease];
   }
 }
 
@@ -1749,7 +1804,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
 - (NSMutableDictionary *)properties {
   @synchronized(self) {
-    return properties_;
+    return [[properties_ retain] autorelease];
   }
 }
 
@@ -1764,7 +1819,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
 - (id)propertyForKey:(NSString *)key {
   @synchronized(self) {
-    return [properties_ objectForKey:key];
+    return [[[properties_ objectForKey:key] retain] autorelease];
   }
 }
 
@@ -1776,6 +1831,14 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
       [properties_ addEntriesFromDictionary:dict];
     }
   }
+}
+
+- (NSData *)bodyData {
+  return self.postData;
+}
+
+- (void)setBodyData:(NSData *)postData {
+  self.postData = postData;
 }
 
 - (void)setCommentWithFormat:(id)format, ... {
@@ -1869,8 +1932,12 @@ NSString *GTMCleanedUserAgentString(NSString *str) {
 
   NSMutableString *result = [NSMutableString stringWithString:str];
 
-  // Replace spaces with underscores
+  // Replace spaces and commas with underscores
   [result replaceOccurrencesOfString:@" "
+                          withString:@"_"
+                             options:0
+                               range:NSMakeRange(0, [result length])];
+  [result replaceOccurrencesOfString:@","
                           withString:@"_"
                              options:0
                                range:NSMakeRange(0, [result length])];
@@ -1879,7 +1946,7 @@ NSString *GTMCleanedUserAgentString(NSString *str) {
   static NSCharacterSet *charsToDelete = nil;
   if (charsToDelete == nil) {
     // Make a set of unwanted characters
-    NSString *const kSeparators = @"()<>@,;:\\\"/[]?={}";
+    NSString *const kSeparators = @"()<>@;:\\\"/[]?={}";
 
     NSMutableCharacterSet *mutableChars;
     mutableChars = [[[NSCharacterSet whitespaceAndNewlineCharacterSet] mutableCopy] autorelease];
@@ -1923,13 +1990,26 @@ NSString *GTMSystemVersionString(void) {
     // Avoid the slowness of calling currentDevice repeatedly on the iPhone
     UIDevice* currentDevice = [UIDevice currentDevice];
 
-    NSString *rawModel = [currentDevice model];
-    NSString *model = GTMCleanedUserAgentString(rawModel);
-
+    NSString *model = [currentDevice model];
+    NSString *cleanedModel = GTMCleanedUserAgentString(model);
     NSString *systemVersion = [currentDevice systemVersion];
 
-    savedSystemString = [[NSString alloc] initWithFormat:@"%@/%@",
-                         model, systemVersion]; // "iPod_Touch/2.2"
+#if TARGET_IPHONE_SIMULATOR
+    NSString *hardwareModel = @"sim";
+#else
+    NSString *hardwareModel;
+    struct utsname unameRecord;
+    if (uname(&unameRecord) == 0) {
+      NSString *machineName = [NSString stringWithCString:unameRecord.machine
+                                                 encoding:NSUTF8StringEncoding];
+      hardwareModel = GTMCleanedUserAgentString(machineName);
+    } else {
+      hardwareModel = @"unk";
+    }
+#endif
+    savedSystemString = [[NSString alloc] initWithFormat:@"%@/%@ hw/%@",
+                         cleanedModel, systemVersion, hardwareModel];
+    // Example:  iPod_Touch/2.2 hw/iPod1_1
   }
   systemString = savedSystemString;
 

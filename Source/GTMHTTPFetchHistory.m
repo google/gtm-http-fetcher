@@ -19,7 +19,7 @@
 
 #import "GTMHTTPFetchHistory.h"
 
-const NSTimeInterval kCachedURLReservationInterval = 60.0; // 1 minute
+static const NSTimeInterval kCachedURLReservationInterval = 60.0; // 1 minute
 static NSString* const kGTMIfNoneMatchHeader = @"If-None-Match";
 static NSString* const kGTMETagHeader = @"Etag";
 
