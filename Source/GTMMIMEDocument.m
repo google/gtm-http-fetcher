@@ -65,7 +65,7 @@ static BOOL memsrch(const unsigned char* needle, NSUInteger needle_len,
     for (NSString *key in sortedKeys) {
       NSString* value = [headers objectForKey:key];
 
-#if DEBUG
+#if DEBUG && !defined(NS_BLOCK_ASSERTIONS)
       // look for troublesome characters in the header keys & values
       static NSCharacterSet *badChars = nil;
       if (!badChars) {
@@ -77,7 +77,7 @@ static BOOL memsrch(const unsigned char* needle, NSUInteger needle_len,
 
       badRange = [value rangeOfCharacterFromSet:badChars];
       NSAssert1(badRange.location == NSNotFound, @"invalid value: %@", value);
-#endif
+#endif  // DEBUG && !defined(NS_BLOCK_ASSERTIONS)
 
       [headerString appendFormat:@"%@: %@\r\n", key, value];
     }

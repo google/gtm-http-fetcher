@@ -107,6 +107,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   service.fetchHistory.shouldRememberETags = NO;
   service.userAgent = kUserAgent;
   service.timeout = kTimeout;
+  service.allowLocalhostRequest = YES;
 
   // Make URLs for a valid fetch, a fetch that returns a status error,
   // and a valid fetch with a different host
@@ -268,6 +269,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   GTMHTTPFetcherService *service = [[[GTMHTTPFetcherService alloc] init] autorelease];
   service.maxRunningFetchersPerHost = 2;
   service.fetchHistory.shouldRememberETags = NO;
+  service.allowLocalhostRequest = YES;
 
   // Create three fetchers for each of two URLs, so there should be
   // two running and one delayed for each

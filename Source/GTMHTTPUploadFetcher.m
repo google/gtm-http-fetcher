@@ -558,6 +558,8 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   chunkFetcher = [GTMHTTPFetcher fetcherWithRequest:chunkRequest];
   [chunkFetcher setDelegateQueue:[self delegateQueue]];
   [chunkFetcher setRunLoopModes:[self runLoopModes]];
+  [chunkFetcher setAllowedInsecureSchemes:[self allowedInsecureSchemes]];
+  [chunkFetcher setAllowLocalhostRequest:[self allowLocalhostRequest]];
 
   // if the upload fetcher has a comment, use the same comment for chunks
   NSString *baseComment = [self comment];
@@ -650,11 +652,11 @@ totalBytesExpectedToSend:0];
     }
   } else {
     // the final chunk has uploaded successfully
-  #if DEBUG
+  #if DEBUG && !defined(NS_BLOCK_ASSERTIONS)
     NSInteger status = [chunkFetcher statusCode];
     NSAssert1(status == 200 || status == 201,
               @"unexpected chunks status %d", (int)status);
-  #endif
+  #endif  // DEBUG && !defined(NS_BLOCK_ASSERTIONS)
 
     // take the chunk fetcher's data as our own
     self.downloadedData = data;

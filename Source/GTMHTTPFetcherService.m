@@ -42,6 +42,8 @@
             proxyCredential = proxyCredential_,
             cookieStorageMethod = cookieStorageMethod_,
             shouldFetchInBackground = shouldFetchInBackground_,
+            allowedInsecureSchemes = allowedInsecureSchemes_,
+            allowLocalhostRequest = allowLocalhostRequest_,
             fetchHistory = fetchHistory_;
 
 - (id)init {
@@ -86,6 +88,8 @@
   fetcher.credential = self.credential;
   fetcher.proxyCredential = self.proxyCredential;
   fetcher.shouldFetchInBackground = self.shouldFetchInBackground;
+  fetcher.allowedInsecureSchemes = self.allowedInsecureSchemes;
+  fetcher.allowLocalhostRequest = self.allowLocalhostRequest;
   fetcher.authorizer = self.authorizer;
   fetcher.service = self;
 
@@ -489,8 +493,8 @@
   // the authorizer's dependence on the fetcher service.  Authorizers can still
   // function without a fetcher service.
   if ([authorizer_ respondsToSelector:@selector(fetcherService)]) {
-    GTMHTTPFetcherService *authFS = [authorizer_ fetcherService];
-    if (authFS == self) {
+    id authFetcherService = [authorizer_ fetcherService];
+    if (authFetcherService == self) {
       [authorizer_ setFetcherService:nil];
     }
   }

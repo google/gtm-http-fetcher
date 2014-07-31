@@ -306,6 +306,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
   XCTAssertNotNil(fetcher);
 
+  fetcher.allowLocalhostRequest = YES;
   fetcher.delegateQueue = [NSOperationQueue mainQueue];
   [fetcher setProperty:@YES forKey:@"_CannotBeginFetch"];
 
@@ -333,6 +334,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
   XCTAssertNotNil(fetcher);
 
+  fetcher.allowLocalhostRequest = YES;
   fetcher.delegateQueue = [NSOperationQueue mainQueue];
   [fetcher setProperty:@YES forKey:@"_CannotBeginFetch"];
 
@@ -372,6 +374,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   __block GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
   XCTAssertNotNil(fetcher, @"Failed to allocate fetcher");
 
+  fetcher.allowLocalhostRequest = YES;
   fetcher.authorizer = [TestAuthorizer authorizer];
 
   void (^completionBlock)(NSData *, NSError *) = ^(NSData *data, NSError *error) {
@@ -401,6 +404,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   };
   XCTAssertNotNil(fetcher, @"Failed to allocate fetcher");
 
+  fetcher.allowLocalhostRequest = YES;
   fetcher.authorizer = [TestAuthorizer expiredAuthorizer];
 
   completionBlock = ^(NSData *data, NSError *error) {
@@ -427,6 +431,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
   XCTAssertNotNil(fetcher, @"Failed to allocate fetcher");
 
+  fetcher.allowLocalhostRequest = YES;
   fetcher.authorizer = [TestAuthorizer expiredAuthorizer];
 
   completionBlock = ^(NSData *data, NSError *error) {
@@ -524,6 +529,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
     receivedDataLen = [fetcher downloadedLength];
   };
 
+  fetcher.allowLocalhostRequest = YES;
 
   // fetch & completion block
   __block BOOL hasFinishedFetching = NO;
@@ -569,6 +575,8 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
   [fetcher setDownloadPath:path];
   [fetcher setReceivedDataBlock:receivedBlock];
+  [fetcher setAllowLocalhostRequest:YES];
+
   [fetcher beginFetchWithCompletionHandler:completionBlock];
 
   // grab a copy of the temporary file path
@@ -600,6 +608,7 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
   [fetcher setDownloadPath:path];
   [fetcher setReceivedDataBlock:receivedBlock];
+  [fetcher setAllowLocalhostRequest:YES];
 
   [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
     XCTAssertNil(data, @"%@: unexpected data", testName);
@@ -834,6 +843,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
                                                                   uploadMIMEType:@"text/plain"
                                                                        chunkSize:75000
                                                                   fetcherService:nil];
+  [fetcher setAllowLocalhostRequest:YES];
 
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
@@ -885,6 +895,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
                                             uploadMIMEType:@"text/plain"
                                                  chunkSize:75000
                                             fetcherService:nil];
+  [fetcher setAllowLocalhostRequest:YES];
 
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
@@ -926,6 +937,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
                                             uploadMIMEType:@"text/plain"
                                                  chunkSize:75000
                                             fetcherService:nil];
+  [fetcher setAllowLocalhostRequest:YES];
 
   // add a property to the fetcher that our progress callback will look for to
   // know when to pause and resume the upload
@@ -966,6 +978,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpectedToSend {
                                             uploadMIMEType:@"text/plain"
                                                  chunkSize:75000
                                             fetcherService:nil];
+  [fetcher setAllowLocalhostRequest:YES];
 
   [fetcher setSentDataBlock:^(NSInteger bytesSent, NSInteger totalBytesSent, NSInteger expectedBytes) {
     [self uploadFetcher:fetcher
@@ -1015,6 +1028,7 @@ totalBytesExpectedToSend:expectedBytes];
   fetcher.retryEnabled = YES;
   fetcher.retrySelector = retrySel;
   fetcher.sentDataSelector = progressSel;
+  fetcher.allowLocalhostRequest = YES;
 
   // add a property to the fetcher that our progress callback will look for to
   // know when to retry the upload
@@ -1050,6 +1064,7 @@ totalBytesExpectedToSend:expectedBytes];
                                             uploadMIMEType:@"text/plain"
                                                  chunkSize:75000
                                             fetcherService:nil];
+  fetcher.allowLocalhostRequest = YES;
   fetcher.retryEnabled = YES;
   [fetcher setRetryBlock:^(BOOL suggestedWillRetry, NSError *error) {
     BOOL shouldRetry = [self uploadRetryFetcher:fetcher
@@ -1102,6 +1117,7 @@ totalBytesExpectedToSend:expectedBytes];
                                             uploadMIMEType:@"text/plain"
                                                  chunkSize:75000
                                             fetcherService:nil];
+  [fetcher setAllowLocalhostRequest:YES];
 
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
@@ -1143,6 +1159,7 @@ totalBytesExpectedToSend:expectedBytes];
                                             uploadMIMEType:@"text/plain"
                                                  chunkSize:75000
                                             fetcherService:nil];
+  [fetcher setAllowLocalhostRequest:YES];
 
   [fetcher beginFetchWithDelegate:self
                 didFinishSelector:finishedSel];
@@ -1195,6 +1212,8 @@ totalBytesExpectedToSend:expectedBytes];
 
   XCTAssertNotNil(fetcher, @"Failed to allocate fetcher");
 
+  [fetcher setAllowLocalhostRequest:YES];
+
   // setting the fetch history will add the "If-modified-since" header
   // to repeat requests
   [fetchHistory_ setShouldCacheETaggedData:doCaching];
@@ -1213,6 +1232,7 @@ totalBytesExpectedToSend:expectedBytes];
   }
 
   [fetcher setCredential:credential];
+  [fetcher setAllowLocalhostRequest:YES];
 
   BOOL isFetching = [fetcher beginFetchWithDelegate:self
                                   didFinishSelector:@selector(testFetcher:finishedWithData:error:)];

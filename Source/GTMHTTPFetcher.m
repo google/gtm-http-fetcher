@@ -272,10 +272,68 @@ static NSString *const kCallbackError = @"error";
     goto CannotBeginFetch;
   }
 
-  if (request_ == nil || [request_ URL] == nil) {
+  NSURL *requestURL = [request_ URL];
+  if (request_ == nil || requestURL == nil) {
     NSAssert(request_ != nil, @"beginFetchWithDelegate requires a request with a URL");
     goto CannotBeginFetch;
   }
+
+#if !GTM_ALLOW_INSECURE_REQUESTS
+  if (requestURL != nil) {
+    // Allow https only for requests, unless overridden by the client.
+    //
+    // Non-https requests may too easily be snooped, so we disallow them by default.
+    //
+    // file: and data: schemes are usually safe if they are hardcoded in the client or provided
+    // by a trusted source, but since it's fairly rare to need them, it's safest to make clients
+    // explicitly whitelist them.
+    NSString *requestScheme = [requestURL scheme];
+    BOOL isSecure = ([requestScheme caseInsensitiveCompare:@"https"] == NSOrderedSame);
+    if (!isSecure) {
+      BOOL allowRequest = NO;
+      NSString *host = [requestURL host];
+      BOOL isLocalhost = ([host caseInsensitiveCompare:@"localhost"] == NSOrderedSame
+                          || [host isEqual:@"::1"]
+                          || [host isEqual:@"127.0.0.1"]);
+      if (isLocalhost) {
+        if (allowLocalhostRequest_) {
+          allowRequest = YES;
+        } else {
+          // To fetch from localhost, the fetcher must specifically have the allowLocalhostRequest
+          // property set.
+#if DEBUG
+          NSAssert(NO, @"Fetch request for localhost but fetcher allowLocalhostRequest"
+                       @" is not set: %@", requestURL);
+#else
+          NSLog(@"Localhost fetch disallowed for %@", requestURL);
+#endif
+        }
+      } else {
+        // Not localhost; check schemes.
+        for (NSString *allowedScheme in allowedInsecureSchemes_) {
+          if ([requestScheme caseInsensitiveCompare:allowedScheme] == NSOrderedSame) {
+            allowRequest = YES;
+            break;
+          }
+        }
+        if (!allowRequest) {
+          // To make a request other than https:, the client must specify an array for the
+          // allowedInsecureSchemes property.
+#if DEBUG
+          NSAssert(NO, @"Insecure fetch request has a scheme (%@)"
+                       @" not found in fetcher allowedInsecureSchemes (%@): %@",
+                       requestScheme, allowedInsecureSchemes_, requestURL);
+#else
+          NSLog(@"Fetch disallowed for %@", requestURL);
+#endif
+        }
+      }
+      if (!allowRequest) {
+        goto CannotBeginFetch;
+      }
+    }  // !isSecure
+  }  // requestURL != nil
+#endif  // GTM_ALLOW_INSECURE_REQUESTS
 
   self.downloadedData = nil;
   downloadedLength_ = 0;
@@ -1670,6 +1728,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
          properties;
 
 @synthesize mutableRequest = request_,
+            allowedInsecureSchemes = allowedInsecureSchemes_,
+            allowLocalhostRequest = allowLocalhostRequest_,
             credential = credential_,
             proxyCredential = proxyCredential_,
             postData = postData_,

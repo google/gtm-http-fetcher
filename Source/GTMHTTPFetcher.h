@@ -263,6 +263,17 @@
   #define GTM_BACKGROUND_FETCHING 1
 #endif
 
+#ifndef GTM_ALLOW_INSECURE_REQUESTS
+  // For builds prior to the iOS 8/10.10 SDKs, default to ignoring insecure requests for backwards
+  // compatibility unless the project has smartly set GTM_ALLOW_INSECURE_REQUESTS explicitly.
+  #if (!TARGET_OS_IPHONE && defined(MAC_OS_X_VERSION_10_10) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_10) \
+      || (TARGET_OS_IPHONE && defined(__IPHONE_8_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_8_0)
+    #define GTM_ALLOW_INSECURE_REQUESTS 0
+  #else
+    #define GTM_ALLOW_INSECURE_REQUESTS 1
+  #endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -432,6 +443,8 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
   NSString *temporaryDownloadPath_;
   NSFileHandle *downloadFileHandle_;
   unsigned long long downloadedLength_;
+  NSArray *allowedInsecureSchemes_;
+  BOOL allowLocalhostRequest_;
   NSURLCredential *credential_;     // username & password
   NSURLCredential *proxyCredential_; // credential supplied to proxy servers
   NSData *postData_;
@@ -519,6 +532,24 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 //
 // The underlying request is mutable and may be modified by the caller
 @property (retain) NSMutableURLRequest *mutableRequest;
+
+// By default, the fetcher allows only secure (https) schemes unless this
+// property is set, or the GTM_ALLOW_INSECURE_REQUESTS build flag is set.
+//
+// For example, during debugging when fetching from a development server that lacks SSL support,
+// this may be set to @[ @"http" ], or when the fetcher is used to retrieve local files,
+// this may be set to @[ @"file" ].
+//
+// This should be left as nil for release builds to avoid creating the opportunity for
+// leaking private user behavior and data.  If a server is providing insecure URLs
+// for fetching by the client app, report the problem as server security & privacy bug.
+@property(copy) NSArray *allowedInsecureSchemes;
+
+// By default, the fetcher prohibits localhost requests unless this property is set,
+// or the GTM_ALLOW_INSECURE_REQUESTS build flag is set.
+//
+// For localhost requests, the URL scheme is not checked  when this property is set.
+@property(assign) BOOL allowLocalhostRequest;
 
 // Setting the credential is optional; it is used if the connection receives
 // an authentication challenge
