@@ -636,6 +636,42 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   XCTAssertFalse(doesExist, @"%@: file should not exist", testName);
 }
 
+- (void)testFetchOffMainThread {
+  if (!isServerRunning_) return;
+
+  [self resetNotificationCounts];
+  [self resetFetchResponse];
+
+  NSString *urlString = [self localURLStringToTestFileName:kValidFileName];
+
+  NSURL *url = [NSURL URLWithString:urlString];
+  NSURLRequest *req = [NSURLRequest requestWithURL:url
+                                       cachePolicy:NSURLRequestReloadIgnoringCacheData
+                                   timeoutInterval:kGiveUpInterval];
+  GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
+  XCTAssertNotNil(fetcher);
+
+  [fetcher setAllowLocalhostRequest:YES];
+
+  __block BOOL hasFinishedFetching = NO;
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+    [fetcher beginFetchWithCompletionHandler:^(NSData *data, NSError *error) {
+      XCTAssertEqualObjects(data, [self gettysburgAddress]);
+      XCTAssertNil(fetcherError_,);
+      hasFinishedFetching = YES;
+    }];
+  });
+  [fetcher waitForCompletionWithTimeout:kGiveUpInterval];
+
+  XCTAssert(hasFinishedFetching);
+
+  // check the notifications
+  XCTAssertEqual(fetchStartedNotificationCount_, 1, @"fetches started");
+  XCTAssertEqual(fetchStoppedNotificationCount_, 1, @"fetches stopped");
+  XCTAssertEqual(retryDelayStartedNotificationCount_, 0, @"retries started");
+  XCTAssertEqual(retryDelayStoppedNotificationCount_, 0, @"retries started");
+}
+
 - (void)testRetryFetches {
 
   if (!isServerRunning_) return;
@@ -1211,8 +1247,6 @@ totalBytesExpectedToSend:expectedBytes];
   GTMHTTPFetcher *fetcher = [GTMHTTPFetcher fetcherWithRequest:req];
 
   XCTAssertNotNil(fetcher, @"Failed to allocate fetcher");
-
-  [fetcher setAllowLocalhostRequest:YES];
 
   // setting the fetch history will add the "If-modified-since" header
   // to repeat requests

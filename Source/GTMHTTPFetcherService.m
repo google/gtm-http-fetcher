@@ -477,7 +477,11 @@
   // Use the fetcher service for the authorization fetches if the auth
   // object supports fetcher services
   if ([authorizer_ respondsToSelector:@selector(setFetcherService:)]) {
+#if GTM_USE_SESSION_FETCHER
+    [authorizer_ setFetcherService:(id)self];
+#else
     [authorizer_ setFetcherService:self];
+#endif
   }
 }
 

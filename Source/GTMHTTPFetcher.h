@@ -274,6 +274,35 @@
   #endif
 #endif
 
+#if !defined(GTMBridgeFetcher)
+  // These bridge macros should be identical in GTMHTTPFetcher.h and GTMSessionFetcher.h
+  #if GTM_USE_SESSION_FETCHER
+    // Macros to new fetcher class.
+    #define GTMBridgeFetcher GTMSessionFetcher
+    #define GTMBridgeFetcherService GTMSessionFetcherService
+    #define GTMBridgeFetcherServiceProtocol GTMSessionFetcherServiceProtocol
+    #define GTMBridgeAssertValidSelector GTMSessionFetcherAssertValidSelector
+    #define GTMBridgeCookieStorage GTMSessionCookieStorage
+    #define GTMBridgeCleanedUserAgentString GTMFetcherCleanedUserAgentString
+    #define GTMBridgeSystemVersionString GTMFetcherSystemVersionString
+    #define GTMBridgeApplicationIdentifier GTMFetcherApplicationIdentifier
+    #define kGTMBridgeFetcherStatusDomain kGTMSessionFetcherStatusDomain
+    #define kGTMBridgeFetcherStatusBadRequest kGTMSessionFetcherStatusBadRequest
+  #else
+    // Macros to old fetcher class.
+    #define GTMBridgeFetcher GTMHTTPFetcher
+    #define GTMBridgeFetcherService GTMHTTPFetcherService
+    #define GTMBridgeFetcherServiceProtocol GTMHTTPFetcherServiceProtocol
+    #define GTMBridgeAssertValidSelector GTMAssertSelectorNilOrImplementedWithArgs
+    #define GTMBridgeCookieStorage GTMCookieStorage
+    #define GTMBridgeCleanedUserAgentString GTMCleanedUserAgentString
+    #define GTMBridgeSystemVersionString GTMSystemVersionString
+    #define GTMBridgeApplicationIdentifier GTMApplicationIdentifier
+    #define kGTMBridgeFetcherStatusDomain kGTMHTTPFetcherStatusDomain
+    #define kGTMBridgeFetcherStatusBadRequest kGTMHTTPFetcherStatusBadRequest
+  #endif  // GTM_USE_SESSION_FETCHER
+#endif  // !defined(GTMBridgeFetcher)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -287,6 +316,7 @@ extern NSString *const kGTMHTTPFetcherRetryDelayStartedNotification;
 extern NSString *const kGTMHTTPFetcherRetryDelayStoppedNotification;
 
 // callback constants
+
 extern NSString *const kGTMHTTPFetcherErrorDomain;
 extern NSString *const kGTMHTTPFetcherStatusDomain;
 extern NSString *const kGTMHTTPFetcherErrorChallengeKey;
@@ -379,6 +409,10 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 - (void)removeCachedDataForRequest:(NSURLRequest *)request;
 @end
 
+#if GTM_USE_SESSION_FETCHER
+@protocol GTMSessionFetcherServiceProtocol;
+#endif
+
 @protocol GTMHTTPFetcherServiceProtocol <NSObject>
 // This protocol allows us to call into the service without requiring
 // GTMHTTPFetcherService sources in this project
@@ -392,6 +426,8 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 - (BOOL)isDelayingFetcher:(GTMHTTPFetcher *)fetcher;
 @end
 
+#if !defined(GTM_FETCHER_AUTHORIZATION_PROTOCOL)
+#define GTM_FETCHER_AUTHORIZATION_PROTOCOL 1
 @protocol GTMFetcherAuthorizationProtocol <NSObject>
 @required
 // This protocol allows us to call the authorizer without requiring its sources
@@ -425,11 +461,17 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
        completionHandler:(void (^)(NSError *error))handler;
 #endif
 
-@property (assign) id <GTMHTTPFetcherServiceProtocol> fetcherService; // WEAK
+#if GTM_USE_SESSION_FETCHER
+@property (assign) id<GTMSessionFetcherServiceProtocol> fetcherService; // WEAK
+#else
+@property (assign) id<GTMHTTPFetcherServiceProtocol> fetcherService; // WEAK
+#endif
 
 - (BOOL)primeForRefresh;
 
 @end
+#endif  // !defined(GTM_FETCHER_AUTHORIZATION_PROTOCOL)
+
 
 // GTMHTTPFetcher objects are used for async retrieval of an http get or post
 //
@@ -768,7 +810,9 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 
 // Callbacks can be invoked on an operation queue rather than via the run loop,
 // starting on 10.7 and iOS 6.  If a delegate queue is supplied. the run loop
-// modes are ignored.
+// modes are ignored. If no delegateQueue is supplied, and run loop modes are
+// not supplied, and the fetcher is started off of the main thread, then a
+// delegateQueue of [NSOperationQueue mainQueue] is assumed.
 @property (retain) NSOperationQueue *delegateQueue;
 
 // Using the fetcher while a modal dialog is displayed requires setting the
@@ -782,7 +826,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 + (void)setConnectionClass:(Class)theClass;
 
 //
-// Newer synonym for postData.
+// Method for compatibility with GTMSessionFetcher
 //
 @property (retain) NSData *bodyData;
 

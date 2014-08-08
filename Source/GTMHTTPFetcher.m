@@ -422,6 +422,15 @@ static NSString *const kCallbackError = @"error";
     // NSURLConnection has no setDelegateQueue: on iOS 4 and Mac OS X 10.5.
     delegateQueue = nil;
     self.delegateQueue = nil;
+  } else if (delegateQueue == nil && runLoopModes_ == nil && ![NSThread isMainThread]) {
+    // Neither a delegate queue nor runLoopModes were supplied, and we're not on the
+    // main thread, so assume the user really wants callbacks and provide a queue.
+    //
+    // We don't have a way to verify that this thread has a run loop spinning, but
+    // it's fairly rare that a background thread does have one.  A client that
+    // does want to rely on spinning a run loop should specify run loop modes.
+    delegateQueue = [NSOperationQueue mainQueue];
+    self.delegateQueue = delegateQueue;
   }
 
 #if DEBUG && TARGET_OS_IPHONE
