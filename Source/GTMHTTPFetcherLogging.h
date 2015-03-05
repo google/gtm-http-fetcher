@@ -77,6 +77,9 @@
 + (void)setLoggingDateStamp:(NSString *)str;
 + (NSString *)loggingDateStamp;
 
+// the directory used for the log of the current app run.
++ (NSString *)logDirectoryForCurrentRun;
+
 // internal; called by fetcher
 - (void)logFetchWithError:(NSError *)error;
 - (BOOL)logCapturePostStream;

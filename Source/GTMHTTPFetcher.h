@@ -424,6 +424,11 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 
 - (GTMHTTPFetcher *)fetcherWithRequest:(NSURLRequest *)request;
 - (BOOL)isDelayingFetcher:(GTMHTTPFetcher *)fetcher;
+
+@optional
+// Unimplemented in GTMHTTPFetcherService, but checked by GTMOAuth2Authentication.
+- (dispatch_queue_t)callbackQueue;
+
 @end
 
 #if !defined(GTM_FETCHER_AUTHORIZATION_PROTOCOL)

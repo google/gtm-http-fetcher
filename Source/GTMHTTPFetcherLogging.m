@@ -86,7 +86,8 @@ static BOOL gIsLoggingEnabled = NO;
 static BOOL gIsLoggingToFile = YES;
 static NSString *gLoggingDirectoryPath = nil;
 static NSString *gLoggingDateStamp = nil;
-static NSString* gLoggingProcessName = nil;
+static NSString *gLoggingProcessName = nil;
+static NSString *gLogDirectoryForCurrentRun = nil;
 
 + (void)setLoggingDirectory:(NSString *)path {
   [gLoggingDirectoryPath autorelease];
@@ -132,6 +133,39 @@ static NSString* gLoggingProcessName = nil;
     }
   }
   return gLoggingDirectoryPath;
+}
+
++ (NSString *)logDirectoryForCurrentRun {
+  if (gLogDirectoryForCurrentRun) return gLogDirectoryForCurrentRun;
+
+  NSString *parentDir = [[self class] loggingDirectory];
+  NSString *dateStamp = [[self class] loggingDateStamp];
+  NSString *logNamePrefix = [[self class] processNameLogPrefix];
+
+  // make a directory for this run's logs, like
+  //   SyncProto_logs_10-16_01-56-58PM
+  NSString *dirName = [NSString stringWithFormat:@"%@%@",
+                       logNamePrefix, dateStamp];
+  NSString *logDirectory = [parentDir stringByAppendingPathComponent:dirName];
+
+  if (gIsLoggingToFile) {
+    // be sure that the first time this app runs, it's not writing to
+    // a preexisting folder
+    static BOOL shouldReuseFolder = NO;
+    if (!shouldReuseFolder) {
+      shouldReuseFolder = YES;
+      NSString *origLogDir = logDirectory;
+      for (int ctr = 2; ctr < 20; ctr++) {
+        if (![[self class] fileOrDirExistsAtPath:logDirectory]) break;
+
+        // append a digit
+        logDirectory = [origLogDir stringByAppendingFormat:@"_%d", ctr];
+      }
+    }
+    if (![[self class] makeDirectoryUpToPath:logDirectory]) return nil;
+  }
+  gLogDirectoryForCurrentRun = [logDirectory copy];
+  return gLogDirectoryForCurrentRun;
 }
 
 + (void)setLoggingEnabled:(BOOL)flag {
@@ -463,30 +497,10 @@ static NSString* gLoggingProcessName = nil;
   NSString *parentDir = [[self class] loggingDirectory];
   NSString *processName = [[self class] loggingProcessName];
   NSString *dateStamp = [[self class] loggingDateStamp];
-  NSString *logNamePrefix = [[self class] processNameLogPrefix];
 
-  // make a directory for this run's logs, like
-  //   SyncProto_logs_10-16_01-56-58PM
-  NSString *dirName = [NSString stringWithFormat:@"%@%@",
-                       logNamePrefix, dateStamp];
-  NSString *logDirectory = [parentDir stringByAppendingPathComponent:dirName];
+  NSString *logDirectory = [[self class] logDirectoryForCurrentRun];
+  if (!logDirectory) return;
 
-  if (gIsLoggingToFile) {
-    // be sure that the first time this app runs, it's not writing to
-    // a preexisting folder
-    static BOOL shouldReuseFolder = NO;
-    if (!shouldReuseFolder) {
-      shouldReuseFolder = YES;
-      NSString *origLogDir = logDirectory;
-      for (int ctr = 2; ctr < 20; ctr++) {
-        if (![[self class] fileOrDirExistsAtPath:logDirectory]) break;
-
-        // append a digit
-        logDirectory = [origLogDir stringByAppendingFormat:@"_%d", ctr];
-      }
-    }
-    if (![[self class] makeDirectoryUpToPath:logDirectory]) return;
-  }
   // each response's NSData goes into its own xml or txt file, though all
   // responses for this run of the app share a main html file.  This
   // counter tracks all fetch responses for this run of the app.
@@ -522,7 +536,7 @@ static NSString* gLoggingProcessName = nil;
     NSString *responseDataExtn = nil;
 
     // generate a response file base name like
-    responseBaseName = [NSString stringWithFormat:@"fetch_%d_response",
+    responseBaseName = [NSString stringWithFormat:@"httpfetcher_%d_response",
                         responseCounter];
 
     NSString *responseType = [responseHeaders valueForKey:@"Content-Type"];
@@ -588,7 +602,7 @@ static NSString* gLoggingProcessName = nil;
   }
 
   // now write the visible html elements
-  NSString *copyableFileName = [NSString stringWithFormat:@"fetch_%d.txt",
+  NSString *copyableFileName = [NSString stringWithFormat:@"httpfetcher_%d.txt",
                                 responseCounter];
 
   // write the date & time, the comment, and the link to the plain-text
