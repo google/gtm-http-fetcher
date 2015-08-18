@@ -1,7 +1,10 @@
-GTM HTTP Fetcher Release Notes
+# Google Toolbox for Mac - HTTP Fetcher #
 
-Project site:     http://code.google.com/p/gtm-http-fetcher/
-Discussion group: http://groups.google.com/group/google-toolbox-for-mac
+**Project site** <https://github.com/google/gtm-http-fetcher><br>
+**Discussion group** <http://groups.google.com/group/google-toolbox-for-mac>
+
+
+## Release History ##
 
 28-September-2012
 
@@ -77,7 +80,7 @@ Renamed GTMAssertSelectorNilOrImplementedWithArgs()
 
 Ensure that delegate is nil when not retained.
 
-   
+
 Release 1.0.0
 9-Sept-2010
 
