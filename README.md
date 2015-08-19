@@ -3,85 +3,24 @@
 **Project site** <https://github.com/google/gtm-http-fetcher><br>
 **Discussion group** <http://groups.google.com/group/google-toolbox-for-mac>
 
+GTM HTTP Fetcher makes it easy for Cocoa applications to perform http
+operations.  The fetcher is implemented as a wrapper on NSURLConnection, so its
+behavior is asynchronous and uses operating-system settings on iOS and Mac OS X.
 
-## Release History ##
+Features include:
+- Simple to build; only one source/header file pair is required
+- Simple to use: takes just two lines of code to fetch a request
+- Callbacks are delegate/selector pairs or blocks
+- Flexible cookie storage
+- Caching of ETagged responses, reducing overhead of redundant fetches
+- Automatic retry on errors, with exponential backoff
+- Support for generating multipart MIME upload streams
+- Easy, convenient logging of http requests and responses
+- Fully independent of other projects
 
-28-September-2012
+**To get started** with GTM HTTP Fetcher and the Objective-C Client Library,
+read the [wiki](https://github.com/google/gtm-http-fetcher/wiki).
 
-Added delegateQueue support to fetcher and fetcher service, allowing fetches
-to begin on a thread without a run loop and to invoke callbacks on the main
-thread or a background thread, beginning with iOS 6 and Mac OS X 10.7.
-
-
-9-January-2012
-
-Fetcher now includes user-agent string utility functions
-
-Fetcher service has properties for request userAgent and timeout
-
-
-22-November-2011
-
-Fetchers now support a servicePriority property which affects the order in
-which the fetcher service object dequeues delayed fetchers
-
-
-1-November-2011
-
-On status 401 results when using an authorizer, the fetcher will attempt a
-single retry if the authorizer implements a primeForRefresh method
-
-
-7-October-2011
-
-Changed isFetching method to return YES during service and authorization delays
-
-
-9-September-2011
-
-Added support for creating an upload fetcher from a location URL to allow
-restarting uploads with a new upload fetcher instance
-
-
-18-August-2011
-
-Added GTMReadMonitorInputStream for logging uploaded NSInputStreams
-
-
-8-July-2011
-
-Added shouldFetchInBackground property (thanks justin a)
-
-
-24-Mar-2011
-
-Added authorizer support
-
-
-7-Feb-2011
-
-Made cookies set by a redirect immediately available in the new request (thanks ehoracek)
-Added getter for static cookie storage
-
-
-16-Nov-2010
-
-Added fetcher comment property for logging
-
-
-27-Oct-2010
-
-Added downloadPath and downloadFileHandle properties
-Added waitForCompletionWithTimeout:
-Renamed GTMAssertSelectorNilOrImplementedWithArgs()
-
-
-4-Oct-2010
-
-Ensure that delegate is nil when not retained.
-
-
-Release 1.0.0
-9-Sept-2010
-
-Initial public release.
+**If you have a problem** or want a new feature to be included in the fetcher,
+please join the [GTM discussion group](http://groups.google.com/group/google-toolbox-for-mac)
+or submit an [issue](https://github.com/google/gtm-http-fetcher/issues).
