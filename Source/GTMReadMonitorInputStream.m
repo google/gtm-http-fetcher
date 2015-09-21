@@ -52,11 +52,11 @@
 
 #pragma mark -
 
-+ (id)inputStreamWithStream:(NSInputStream *)input {
++ (instancetype)inputStreamWithStream:(NSInputStream *)input {
   return [[[self alloc] initWithStream:input] autorelease];
 }
 
-- (id)initWithStream:(NSInputStream *)input  {
+- (instancetype)initWithStream:(NSInputStream *)input  {
   self = [super init];
   if (self) {
     inputStream_ = [input retain];
@@ -65,7 +65,7 @@
   return self;
 }
 
-- (id)init {
+- (instancetype)init {
   return [self initWithStream:nil];
 }
 

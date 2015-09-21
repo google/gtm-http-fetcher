@@ -45,9 +45,9 @@
 
 // length is passed to the progress callback; it may be zero
 // if the progress callback can handle that
-+ (id)inputStreamWithStream:(NSInputStream *)input;
++ (instancetype)inputStreamWithStream:(NSInputStream *)input;
 
-- (id)initWithStream:(NSInputStream *)input;
+- (instancetype)initWithStream:(NSInputStream *)input;
 
 // The read monitor selector is called when bytes have been read. It should
 // have a signature matching

@@ -34,7 +34,7 @@
 // do not need to import the header, as some projects may not have it available
 #ifndef GTM_NSSTREAM_DELEGATE
 @interface GTMReadMonitorInputStream : NSInputStream
-+ (id)inputStreamWithStream:(NSInputStream *)input;
++ (instancetype)inputStreamWithStream:(NSInputStream *)input;
 @property (assign) id readDelegate;
 @property (assign) SEL readSelector;
 @property (retain) NSArray *runLoopModes;
@@ -417,7 +417,7 @@ static NSString *gLogDirectoryForCurrentRun = nil;
   // and turn that munged buffer an NSString.  That gives us a string
   // we can use with NSScanner.
   NSMutableData *mutableData = [NSMutableData dataWithData:data];
-  unsigned char *bytes = [mutableData mutableBytes];
+  unsigned char *bytes = (unsigned char *)[mutableData mutableBytes];
 
   for (unsigned int idx = 0; idx < [mutableData length]; idx++) {
     if (bytes[idx] > 0x7F || bytes[idx] == 0) {
@@ -673,42 +673,42 @@ static NSString *gLogDirectoryForCurrentRun = nil;
   }
 
   // write the request post data, toggleable
-  NSData *postData;
+  NSData *bodyData;
   if (loggedStreamData_) {
-    postData = loggedStreamData_;
-  } else if (postData_) {
-    postData = postData_;
+    bodyData = loggedStreamData_;
+  } else if (bodyData_) {
+    bodyData = bodyData_;
   } else {
-    postData = [request_ HTTPBody];
+    bodyData = [request_ HTTPBody];
   }
 
-  NSString *postDataStr = nil;
-  NSUInteger postDataLength = [postData length];
+  NSString *bodyDataStr = nil;
+  NSUInteger bodyDataLength = [bodyData length];
   NSString *postType = [requestHeaders valueForKey:@"Content-Type"];
 
-  if (postDataLength > 0) {
+  if (bodyDataLength > 0) {
     [outputHTML appendFormat:@"&nbsp;&nbsp; data: %d bytes, <code>%@</code><br>\n",
-     (int)postDataLength, postType ? postType : @"<no type>"];
+     (int)bodyDataLength, postType ? postType : @"<no type>"];
 
     if (logRequestBody_) {
-      postDataStr = [[logRequestBody_ copy] autorelease];
+      bodyDataStr = [[logRequestBody_ copy] autorelease];
       [logRequestBody_ release];
       logRequestBody_ = nil;
     } else {
-      postDataStr = [self stringFromStreamData:postData
+      bodyDataStr = [self stringFromStreamData:bodyData
                                    contentType:postType];
-      if (postDataStr) {
+      if (bodyDataStr) {
         // remove OAuth 2 client secret and refresh token
-        postDataStr = [[self class] snipSubstringOfString:postDataStr
+        bodyDataStr = [[self class] snipSubstringOfString:bodyDataStr
                                        betweenStartString:@"client_secret="
                                                 endString:@"&"];
 
-        postDataStr = [[self class] snipSubstringOfString:postDataStr
+        bodyDataStr = [[self class] snipSubstringOfString:bodyDataStr
                                        betweenStartString:@"refresh_token="
                                                 endString:@"&"];
 
         // remove ClientLogin password
-        postDataStr = [[self class] snipSubstringOfString:postDataStr
+        bodyDataStr = [[self class] snipSubstringOfString:bodyDataStr
                                        betweenStartString:@"&Passwd="
                                                 endString:@"&"];
       }
@@ -790,22 +790,20 @@ static NSString *gLogDirectoryForCurrentRun = nil;
 
   // Write the response data
   if (responseDataFileName) {
-    NSString *escapedResponseFile = [responseDataFileName stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     if (isResponseImage) {
       // Make a small inline image that links to the full image file
       [outputHTML appendFormat:@"&nbsp;&nbsp; data: %d bytes, <code>%@</code><br>",
        (int)responseDataLength, responseMIMEType];
       NSString *const fmt = @"<a href=\"%@\"><img src='%@' alt='image'"
         " style='border:solid thin;max-height:32'></a>\n";
-      [outputHTML appendFormat:fmt,
-       escapedResponseFile, escapedResponseFile];
+      [outputHTML appendFormat:fmt, responseDataFileName, responseDataFileName];
     } else {
       // The response data was XML; link to the xml file
       NSString *const fmt = @"&nbsp;&nbsp; data: %d bytes, <code>"
         "%@</code>&nbsp;&nbsp;&nbsp;<i><a href=\"%@\">%@</a></i>\n";
       [outputHTML appendFormat:fmt,
        (int)responseDataLength, responseMIMEType,
-       escapedResponseFile, [escapedResponseFile pathExtension]];
+       responseDataFileName, [responseDataFileName pathExtension]];
     }
   } else {
     // The response data was not an image; just show the length and MIME type
@@ -829,11 +827,11 @@ static NSString *gLogDirectoryForCurrentRun = nil;
      [[self class] headersStringForDictionary:requestHeaders]];
   }
 
-  if (postDataLength > 0) {
+  if (bodyDataLength > 0) {
     [copyable appendFormat:@"Request body: (%u bytes)\n",
-     (unsigned int) postDataLength];
-    if (postDataStr) {
-      [copyable appendFormat:@"%@\n", postDataStr];
+     (unsigned int) bodyDataLength];
+    if (bodyDataStr) {
+      [copyable appendFormat:@"%@\n", bodyDataStr];
     }
     [copyable appendString:@"\n"];
   }

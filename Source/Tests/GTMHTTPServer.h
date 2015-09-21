@@ -132,12 +132,12 @@ enum {
  @private
   CFHTTPMessageRef message_;
 }
-+ (id)responseWithString:(NSString *)plainText;
-+ (id)responseWithHTMLString:(NSString *)htmlString;
-+ (id)responseWithBody:(NSData *)body
-           contentType:(NSString *)contentType
-            statusCode:(int)statusCode;
-+ (id)emptyResponseWithCode:(int)statusCode;
++ (instancetype)responseWithString:(NSString *)plainText;
++ (instancetype)responseWithHTMLString:(NSString *)htmlString;
++ (instancetype)responseWithBody:(NSData *)body
+                     contentType:(NSString *)contentType
+                      statusCode:(int)statusCode;
++ (instancetype)emptyResponseWithCode:(int)statusCode;
 // TODO: class method for redirections?
 // TODO: add helper for expire/no-cache
 - (void)setValue:(NSString*)value forHeaderField:(NSString*)headerField;

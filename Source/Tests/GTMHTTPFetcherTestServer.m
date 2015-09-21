@@ -197,10 +197,9 @@
       NSString *errStr = [NSString stringWithFormat:@"Authorization \"%@\" should be \"%@\"",
                           authorization, bearerStr];
       NSData *errData = [errStr dataUsingEncoding:NSUTF8StringEncoding];
-      GTMHTTPResponseMessage *response;
       response = [GTMHTTPResponseMessage responseWithBody:errData
-                                              contentType:@"text/plain"
-                                               statusCode:401];
+                                               contentType:@"text/plain"
+                                                statusCode:401];
       return response;
     }
   }

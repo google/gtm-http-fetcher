@@ -61,11 +61,11 @@ static NSString *kResponse = @"Response";
 - (void)setBody:(NSData *)body;
 @end
 
-@interface GTMHTTPResponseMessage (PrivateMethods)
+@interface GTMHTTPResponseMessage ()
 - (id)initWithBody:(NSData *)body
        contentType:(NSString *)contentType
         statusCode:(int)statusCode;
-- (NSData*)serializedData;
+- (NSData *)serializedData;
 @end
 
 @implementation GTMHTTPServer
@@ -533,68 +533,6 @@ startFailed:
   return [self initWithBody:nil contentType:nil statusCode:0];
 }
 
-- (void)dealloc {
-  if (message_) {
-    CFRelease(message_);
-  }
-  [super dealloc];
-}
-
-+ (id)responseWithString:(NSString *)plainText {
-  NSData *body = [plainText dataUsingEncoding:NSUTF8StringEncoding];
-  return [self responseWithBody:body
-                    contentType:@"text/plain; charset=UTF-8"
-                     statusCode:200];
-}
-
-+ (id)responseWithHTMLString:(NSString *)htmlString {
-  return [self responseWithBody:[htmlString dataUsingEncoding:NSUTF8StringEncoding]
-                    contentType:@"text/html; charset=UTF-8"
-                     statusCode:200];
-}
-
-+ (id)responseWithBody:(NSData *)body
-           contentType:(NSString *)contentType
-            statusCode:(int)statusCode {
-  return [[[[self class] alloc] initWithBody:body
-                                 contentType:contentType
-                                  statusCode:statusCode] autorelease];
-}
-
-+ (id)emptyResponseWithCode:(int)statusCode {
-  return [[[[self class] alloc] initWithBody:nil
-                                 contentType:nil
-                                  statusCode:statusCode] autorelease];
-}
-
-- (void)setValue:(NSString*)value forHeaderField:(NSString*)headerField {
-  if ([headerField length] == 0) return;
-  if (value == nil) {
-    value = @"";
-  }
-  CFHTTPMessageSetHeaderFieldValue(message_,
-                                   (CFStringRef)headerField, (CFStringRef)value);
-}
-
-- (void)setHeaderValuesFromDictionary:(NSDictionary *)dict {
-  for (id key in dict) {
-    id value = [dict valueForKey:key];
-    [self setValue:value forHeaderField:key];
-  }
-}
-
-- (NSString *)description {
-  CFStringRef desc = CFCopyDescription(message_);
-  NSString *result =
-    [NSString stringWithFormat:@"%@<%p>{ message=%@ }", [self class], self, desc];
-  CFRelease(desc);
-  return result;
-}
-
-@end
-
-@implementation GTMHTTPResponseMessage (PrivateMethods)
-
 - (id)initWithBody:(NSData *)body
        contentType:(NSString *)contentType
         statusCode:(int)statusCode {
@@ -622,11 +560,68 @@ startFailed:
       contentType = @"text/html";
     }
     NSString *bodyLenStr =
-      [NSString stringWithFormat:@"%lu", (unsigned long)bodyLength];
+        [NSString stringWithFormat:@"%lu", (unsigned long)bodyLength];
     [self setValue:bodyLenStr forHeaderField:@"Content-Length"];
     [self setValue:contentType forHeaderField:@"Content-Type"];
   }
   return self;
+}
+
+- (void)dealloc {
+  if (message_) {
+    CFRelease(message_);
+  }
+  [super dealloc];
+}
+
++ (instancetype)responseWithString:(NSString *)plainText {
+  NSData *body = [plainText dataUsingEncoding:NSUTF8StringEncoding];
+  return [self responseWithBody:body
+                    contentType:@"text/plain; charset=UTF-8"
+                     statusCode:200];
+}
+
++ (instancetype)responseWithHTMLString:(NSString *)htmlString {
+  return [self responseWithBody:[htmlString dataUsingEncoding:NSUTF8StringEncoding]
+                    contentType:@"text/html; charset=UTF-8"
+                     statusCode:200];
+}
+
++ (instancetype)responseWithBody:(NSData *)body
+           contentType:(NSString *)contentType
+            statusCode:(int)statusCode {
+  return [[[[self class] alloc] initWithBody:body
+                                 contentType:contentType
+                                  statusCode:statusCode] autorelease];
+}
+
++ (instancetype)emptyResponseWithCode:(int)statusCode {
+  return [[[[self class] alloc] initWithBody:nil
+                                 contentType:nil
+                                  statusCode:statusCode] autorelease];
+}
+
+- (void)setValue:(NSString*)value forHeaderField:(NSString*)headerField {
+  if ([headerField length] == 0) return;
+  if (value == nil) {
+    value = @"";
+  }
+  CFHTTPMessageSetHeaderFieldValue(message_,
+                                   (CFStringRef)headerField, (CFStringRef)value);
+}
+
+- (void)setHeaderValuesFromDictionary:(NSDictionary *)dict {
+  for (id key in dict) {
+    id value = [dict valueForKey:key];
+    [self setValue:value forHeaderField:key];
+  }
+}
+
+- (NSString *)description {
+  CFStringRef desc = CFCopyDescription(message_);
+  NSString *result = [NSString stringWithFormat:@"%@<%p>{ message=%@ }", [self class], self, desc];
+  CFRelease(desc);
+  return result;
 }
 
 - (NSData *)serializedData {
