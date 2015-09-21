@@ -18,7 +18,7 @@
 //
 
 // This is essentially a wrapper around NSURLConnection for POSTs and GETs.
-// If setPostData: is called, then POST is assumed.
+// If setBodyData: is called, then POST is assumed.
 //
 // When would you use this instead of NSURLConnection?
 //
@@ -47,7 +47,7 @@
 //  GTMHTTPFetcher* myFetcher = [GTMHTTPFetcher fetcherWithRequest:request];
 //
 //  // optional upload body data
-//  [myFetcher setPostData:[postString dataUsingEncoding:NSUTF8StringEncoding]];
+//  [myFetcher setBodyData:[postString dataUsingEncoding:NSUTF8StringEncoding]];
 //
 //  [myFetcher beginFetchWithDelegate:self
 //                  didFinishSelector:@selector(myFetcher:finishedWithData:error:)];
@@ -260,7 +260,9 @@
 #endif
 
 #if TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MAX_ALLOWED >= 40000)
-  #define GTM_BACKGROUND_FETCHING 1
+  #ifndef GTM_BACKGROUND_FETCHING
+    #define GTM_BACKGROUND_FETCHING 1
+  #endif
 #endif
 
 #ifndef GTM_ALLOW_INSECURE_REQUESTS
@@ -271,6 +273,13 @@
     #define GTM_ALLOW_INSECURE_REQUESTS 0
   #else
     #define GTM_ALLOW_INSECURE_REQUESTS 1
+  #endif
+#endif
+
+#if (!TARGET_OS_IPHONE && defined(MAC_OS_X_VERSION_10_11) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_11) \
+  || (TARGET_OS_IPHONE && defined(__IPHONE_9_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_9_0)
+  #ifndef GTM_USE_SESSION_FETCHER
+    #define GTM_USE_SESSION_FETCHER 1
   #endif
 #endif
 
@@ -494,7 +503,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
   BOOL allowLocalhostRequest_;
   NSURLCredential *credential_;     // username & password
   NSURLCredential *proxyCredential_; // credential supplied to proxy servers
-  NSData *postData_;
+  NSData *bodyData_;
   NSInputStream *postStream_;
   NSMutableData *loggedStreamData_;
   NSURLResponse *response_;         // set in connection:didReceiveResponse:
@@ -607,7 +616,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 @property (retain) NSURLCredential *proxyCredential;
 
 // If post data or stream is not set, then a GET retrieval method is assumed
-@property (retain) NSData *postData;
+@property (retain) NSData *bodyData;
 @property (retain) NSInputStream *postStream;
 
 // The default cookie storage method is kGTMHTTPFetcherCookieStorageMethodStatic
@@ -830,10 +839,8 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 + (Class)connectionClass;
 + (void)setConnectionClass:(Class)theClass;
 
-//
-// Method for compatibility with GTMSessionFetcher
-//
-@property (retain) NSData *bodyData;
+// Backwards compatibility only; use bodyData property instead.
+@property (retain) NSData *postData;
 
 // Spin the run loop, discarding events, until the fetch has completed
 //
@@ -847,6 +854,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // if logging is stripped, provide a stub for the main method
 // for controlling logging
 + (void)setLoggingEnabled:(BOOL)flag;
++ (BOOL)isLoggingEnabled;
 #endif // STRIP_GTM_FETCH_LOGGING
 
 @end

@@ -57,8 +57,8 @@
   NSData* dummyData_;
 }
 
-+ (NSInputStream *)streamWithArray:(NSArray *)dataArray;
++ (instancetype)streamWithArray:(NSArray *)dataArray;
 
-- (id)initWithArray:(NSArray *)dataArray;
+- (instancetype)initWithArray:(NSArray *)dataArray;
 
 @end

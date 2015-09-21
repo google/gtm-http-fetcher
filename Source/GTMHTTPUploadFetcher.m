@@ -252,7 +252,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
   // to us during uploads
   needsManualProgress_ = ![GTMHTTPFetcher doesSupportSentDataCallback];
 
-  initialBodyLength_ = [[self postData] length];
+  initialBodyLength_ = [[self bodyData] length];
 
   if (isRestartedUpload_) {
     if (![self isPaused]) {
@@ -571,7 +571,7 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
   [chunkFetcher setProperties:props];
 
   // post the appropriate subset of the full data
-  [chunkFetcher setPostData:chunkData];
+  [chunkFetcher setBodyData:chunkData];
 
   // copy other fetcher settings to the new fetcher
   [chunkFetcher setRetryEnabled:[self isRetryEnabled]];
@@ -722,10 +722,6 @@ totalBytesExpectedToSend:0];
   // we no longer need to be able to cancel this chunkFetcher
   [self destroyChunkFetcher];
 
-  // We may in the future handle Retry-After and ETag headers per
-  // http://code.google.com/p/gears/wiki/ResumableHttpRequestsProposal
-  // but they are not currently sent by the upload server
-
   [self uploadNextChunkWithOffset:newOffset
                 fetcherProperties:props];
 }
@@ -766,7 +762,7 @@ totalBytesExpectedToSend:0];
 
     [chunkRequest setValue:rangeStr forHTTPHeaderField:@"Content-Range"];
     [chunkRequest setValue:@"0" forHTTPHeaderField:@"Content-Length"];
-    [chunkFetcher setPostData:[NSData data]];
+    [chunkFetcher setBodyData:[NSData data]];
 
     // we don't know what our actual offset is anymore, but the server
     // will tell us

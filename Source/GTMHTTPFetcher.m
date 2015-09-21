@@ -17,6 +17,13 @@
 //  GTMHTTPFetcher.m
 //
 
+#if (!TARGET_OS_IPHONE && defined(MAC_OS_X_VERSION_10_11) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_11) \
+    || (TARGET_OS_IPHONE && defined(__IPHONE_9_0) && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_9_0)
+// GTMHTTPFetcher relies on NSURLConnection, which is unavailable for apps built with minimum
+// targets of iOS 9 and OS X 10.11.
+#error GTMHTTPFetcher is deprecated on iOS 9/OS X 10.11; use GTMSessionFetcher instead
+#endif
+
 #import "GTMHTTPFetcher.h"
 
 #if GTM_BACKGROUND_FETCHING
@@ -207,7 +214,7 @@ static NSString *const kCallbackError = @"error";
   [downloadFileHandle_ release];
   [credential_ release];
   [proxyCredential_ release];
-  [postData_ release];
+  [bodyData_ release];
   [postStream_ release];
   [loggedStreamData_ release];
   [response_ release];
@@ -338,6 +345,9 @@ static NSString *const kCallbackError = @"error";
   self.downloadedData = nil;
   downloadedLength_ = 0;
 
+  if (servicePriority_ == NSIntegerMin) {
+    mayDelay = NO;
+  }
   if (mayDelay && service_) {
     BOOL shouldFetchNow = [service_ fetcherShouldBeginFetching:self];
     if (!shouldFetchNow) {
@@ -353,14 +363,14 @@ static NSString *const kCallbackError = @"error";
   BOOL isEffectiveHTTPGet = (effectiveHTTPMethod == nil
                              || [effectiveHTTPMethod isEqual:@"GET"]);
 
-  if (postData_ || postStream_) {
+  if (bodyData_ || postStream_) {
     if (isEffectiveHTTPGet) {
       [request_ setHTTPMethod:@"POST"];
       isEffectiveHTTPGet = NO;
     }
 
-    if (postData_) {
-      [request_ setHTTPBody:postData_];
+    if (bodyData_) {
+      [request_ setHTTPBody:bodyData_];
     } else {
       if ([self respondsToSelector:@selector(setupStreamLogging)]) {
         [self performSelector:@selector(setupStreamLogging)];
@@ -1741,7 +1751,7 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
             allowLocalhostRequest = allowLocalhostRequest_,
             credential = credential_,
             proxyCredential = proxyCredential_,
-            postData = postData_,
+            bodyData = bodyData_,
             postStream = postStream_,
             delegate = delegate_,
             authorizer = authorizer_,
@@ -1902,12 +1912,18 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
   }
 }
 
-- (NSData *)bodyData {
-  return self.postData;
+- (NSData *)postData {
+#if DEBUG
+  NSLog(@"*** GTMHTTPFetcher: postData is deprecated; use bodyData property instead ***");
+#endif
+  return self.bodyData;
 }
 
-- (void)setBodyData:(NSData *)postData {
-  self.postData = postData;
+- (void)setPostData:(NSData *)data {
+#if DEBUG
+  NSLog(@"*** GTMHTTPFetcher: postData is deprecated; use bodyData property instead ***");
+#endif
+  self.bodyData = data;
 }
 
 - (void)setCommentWithFormat:(id)format, ... {
@@ -1938,6 +1954,10 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 
 #if STRIP_GTM_FETCH_LOGGING
 + (void)setLoggingEnabled:(BOOL)flag {
+}
+
++ (BOOL)isLoggingEnabled {
+  return NO;
 }
 #endif // STRIP_GTM_FETCH_LOGGING
 

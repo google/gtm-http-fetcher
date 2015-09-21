@@ -25,7 +25,7 @@
 // needed for chunked upload as a single fetch operation.
 //
 // Protocol document:
-//   http://code.google.com/p/gears/wiki/ResumableHttpRequestsProposal
+//   https://developers.google.com/gdata/docs/resumable_upload
 //
 // To the client, the only fetcher that exists is this class; the subsidiary
 // fetchers needed for uploading chunks are not visible (though the most recent
