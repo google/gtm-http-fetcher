@@ -324,6 +324,13 @@ extern NSString *const kGTMHTTPFetcherStoppedNotification;
 extern NSString *const kGTMHTTPFetcherRetryDelayStartedNotification;
 extern NSString *const kGTMHTTPFetcherRetryDelayStoppedNotification;
 
+// fetch callback was invoked. This notification is sent on the main thread,
+// and may be sent after the fetcher's waitForCompletionWithTimeout: method
+// has returned.
+extern NSString *const kGTMHTTPFetcherCompletionInvokedNotification;
+extern NSString *const kGTMHTTPFetcherCompletionDataKey;
+extern NSString *const kGTMHTTPFetcherCompletionErrorKey;
+
 // callback constants
 
 extern NSString *const kGTMHTTPFetcherErrorDomain;
@@ -470,10 +477,8 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // transmission of the bearer token unencrypted.
 @property (assign) BOOL shouldAuthorizeAllRequests;
 
-#if NS_BLOCKS_AVAILABLE
 - (void)authorizeRequest:(NSMutableURLRequest *)request
        completionHandler:(void (^)(NSError *error))handler;
-#endif
 
 #if GTM_USE_SESSION_FETCHER
 @property (assign) id<GTMSessionFetcherServiceProtocol> fetcherService; // WEAK
@@ -511,19 +516,12 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
   SEL finishedSel_;                 // should by implemented by delegate
   SEL sentDataSel_;                 // optional, set with setSentDataSelector
   SEL receivedDataSel_;             // optional, set with setReceivedDataSelector
-#if NS_BLOCKS_AVAILABLE
+
   void (^completionBlock_)(NSData *, NSError *);
   void (^receivedDataBlock_)(NSData *);
   void (^sentDataBlock_)(NSInteger, NSInteger, NSInteger);
   BOOL (^retryBlock_)(BOOL, NSError *);
-#elif !__LP64__
-  // placeholders: for 32-bit builds, keep the size of the object's ivar section
-  // the same with and without blocks
-  id completionPlaceholder_;
-  id receivedDataPlaceholder_;
-  id sentDataPlaceholder_;
-  id retryPlaceholder_;
-#endif
+
   BOOL hasConnectionEnded_;         // set if the connection need not be cancelled
   BOOL isCancellingChallenge_;      // set only when cancelling an auth challenge
   BOOL isStopNotificationNeeded_;   // set when start notification has been sent
@@ -687,7 +685,6 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // the complete NSData received.
 @property (assign) SEL receivedDataSelector;
 
-#if NS_BLOCKS_AVAILABLE
 // The full interface to the block is provided rather than just a typedef for
 // its parameter list in order to get more useful code completion in the Xcode
 // editor
@@ -696,7 +693,6 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // The dataReceived argument will be nil when downloading to a path or to
 // a file handle
 @property (copy) void (^receivedDataBlock)(NSData *dataReceivedSoFar);
-#endif
 
 // retrying; see comments at the top of the file.  Calling
 // setRetryEnabled(YES) resets the min and max retry intervals.
@@ -709,9 +705,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 // and return YES to cause a retry.  See comments at the top of this file.
 @property (assign) SEL retrySelector;
 
-#if NS_BLOCKS_AVAILABLE
 @property (copy) BOOL (^retryBlock)(BOOL suggestedWillRetry, NSError *error);
-#endif
 
 // Retry intervals must be strictly less than maxRetryInterval, else
 // they will be limited to maxRetryInterval and no further retries will
@@ -755,10 +749,7 @@ NSString *GTMApplicationIdentifier(NSBundle *bundle);
 - (BOOL)beginFetchWithDelegate:(id)delegate
              didFinishSelector:(SEL)finishedSEL;
 
-#if NS_BLOCKS_AVAILABLE
 - (BOOL)beginFetchWithCompletionHandler:(void (^)(NSData *data, NSError *error))handler;
-#endif
-
 
 // Returns YES if this is in the process of fetching a URL
 - (BOOL)isFetching;

@@ -46,6 +46,10 @@ NSString *const kGTMHTTPFetcherStatusDomain      = @"com.google.HTTPStatus";
 NSString *const kGTMHTTPFetcherErrorChallengeKey = @"challenge";
 NSString *const kGTMHTTPFetcherStatusDataKey     = @"data";  // data returned with a kGTMHTTPFetcherStatusDomain error
 
+NSString *const kGTMHTTPFetcherCompletionInvokedNotification = @"kGTMHTTPFetcherCompletionInvokedNotification";
+NSString *const kGTMHTTPFetcherCompletionDataKey = @"data";
+NSString *const kGTMHTTPFetcherCompletionErrorKey = @"error";
+
 // The default max retry interview is 10 minutes for uploads (POST/PUT/PATCH),
 // 1 minute for downloads.
 static const NSTimeInterval kUnsetMaxRetryInterval = -1;
@@ -68,9 +72,7 @@ static NSString *const kCallbackError = @"error";
 @property (copy) NSString *temporaryDownloadPath;
 @property (retain) id <GTMCookieStorageProtocol> cookieStorage;
 @property (readwrite, retain) NSData *downloadedData;
-#if NS_BLOCKS_AVAILABLE
 @property (copy) void (^completionBlock)(NSData *, NSError *);
-#endif
 
 - (BOOL)beginFetchMayDelay:(BOOL)mayDelay
               mayAuthorize:(BOOL)mayAuthorize;
@@ -218,12 +220,10 @@ static NSString *const kCallbackError = @"error";
   [postStream_ release];
   [loggedStreamData_ release];
   [response_ release];
-#if NS_BLOCKS_AVAILABLE
   [completionBlock_ release];
   [receivedDataBlock_ release];
   [sentDataBlock_ release];
   [retryBlock_ release];
-#endif
   [userData_ release];
   [properties_ release];
   [delegateQueue_ release];
@@ -644,7 +644,6 @@ CannotBeginFetch:
   }
 }
 
-#if NS_BLOCKS_AVAILABLE
 - (BOOL)beginFetchWithCompletionHandler:(void (^)(NSData *data, NSError *error))handler {
   self.completionBlock = handler;
 
@@ -654,7 +653,6 @@ CannotBeginFetch:
   return [self beginFetchWithDelegate:[self delegate]
                     didFinishSelector:nil];
 }
-#endif
 
 - (NSString *)createTempDownloadFilePathForPath:(NSString *)targetPath {
   NSString *tempDir = nil;
@@ -761,12 +759,10 @@ CannotBeginFetch:
   [delegateQueue_ autorelease];
   delegateQueue_ = nil;
 
-#if NS_BLOCKS_AVAILABLE
   self.completionBlock = nil;
   self.sentDataBlock = nil;
   self.receivedDataBlock = nil;
   self.retryBlock = nil;
-#endif
 }
 
 // Cancel the fetch of the URL that's currently in progress.
@@ -861,9 +857,7 @@ CannotBeginFetch:
   BOOL isMainThread = [NSThread isMainThread];
 
   while ((!hasConnectionEnded_
-#if NS_BLOCKS_AVAILABLE
           || completionBlock_ != nil
-#endif
           || delegate_ != nil)
          && [giveUpDate timeIntervalSinceNow] > 0) {
 
@@ -1056,11 +1050,7 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
   // To avoid deadlocks, this should not be called inside of @synchronized(self)
   id target;
   SEL sel;
-#if NS_BLOCKS_AVAILABLE
   void (^block)(NSData *, NSError *);
-#else
-  id block = nil;
-#endif
 
   // If -stopFetching is called in another thread directly after this @synchronized stanza finishes
   // on this thread, then target and block could be released before being used in this method. So
@@ -1068,9 +1058,7 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
   @synchronized(self) {
     target = [[delegate_ retain] autorelease];
     sel = finishedSel_;
-#if NS_BLOCKS_AVAILABLE
     block = [[completionBlock_ retain] autorelease];
-#endif
   }
   [self invokeFetchCallbacksWithTarget:target
                               selector:sel
@@ -1091,11 +1079,28 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
                        data:data
                       error:error];
 
-#if NS_BLOCKS_AVAILABLE
   if (block) {
     ((void (^)(NSData *, NSError *))block)(data, error);
   }
-#endif
+
+  // Post a notification, primarily to allow code to collect responses for
+  // testing.
+  //
+  // The observing code is not likely on the fetcher's callback
+  // queue, so this posts explicitly to the main queue.
+  dispatch_async(dispatch_get_main_queue(), ^{
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    if (data) {
+      [userInfo setObject:data forKey:kGTMHTTPFetcherCompletionDataKey];
+    }
+    if (error) {
+      [userInfo setObject:error forKey:kGTMHTTPFetcherCompletionErrorKey];
+    }
+    NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+    [nc postNotificationName:kGTMHTTPFetcherCompletionInvokedNotification
+                      object:self
+                    userInfo:userInfo];
+  });
 }
 
 - (void)invokeFetchCallback:(SEL)sel
@@ -1136,11 +1141,8 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge {
   @synchronized(self) {
     id target = delegate_;
     NSString *sel = finishedSel_ ? NSStringFromSelector(finishedSel_) : nil;
-#if NS_BLOCKS_AVAILABLE
     void (^block)(NSData *, NSError *) = completionBlock_;
-#else
-    id block = nil;
-#endif
+
     [dict setValue:target forKey:kCallbackTarget];
     [dict setValue:sel forKey:kCallbackSelector];
     [dict setValue:block forKey:kCallbackBlock];
@@ -1218,11 +1220,9 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
                totalBytesWritten:totalBytesWritten
        totalBytesExpectedToWrite:totalBytesExpectedToWrite];
 
-#if NS_BLOCKS_AVAILABLE
     if (sentDataBlock_) {
       sentDataBlock_(bytesWritten, totalBytesWritten, totalBytesExpectedToWrite);
     }
-#endif
   }
 }
 
@@ -1272,11 +1272,9 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
                       withObject:downloadedData_];
     }
 
-#if NS_BLOCKS_AVAILABLE
     if (receivedDataBlock_) {
       receivedDataBlock_(downloadedData_);
     }
-#endif
   }  // @synchronized(self)
 }
 
@@ -1586,11 +1584,9 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
                                    target:delegate_
                                 willRetry:willRetry
                                     error:error];
-#if NS_BLOCKS_AVAILABLE
     if (retryBlock_) {
       willRetry = retryBlock_(willRetry, error);
     }
-#endif
   }
   return willRetry;
 }
@@ -1775,12 +1771,10 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
             log = log_,
             cookieStorage = cookieStorage_;
 
-#if NS_BLOCKS_AVAILABLE
 @synthesize completionBlock = completionBlock_,
             sentDataBlock = sentDataBlock_,
             receivedDataBlock = receivedDataBlock_,
             retryBlock = retryBlock_;
-#endif
 
 @synthesize shouldFetchInBackground = shouldFetchInBackground_;
 
