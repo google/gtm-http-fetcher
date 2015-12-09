@@ -188,6 +188,15 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   [self resetNotificationCounts];
   [self resetFetchResponse];
 
+  [self expectationForNotification:kGTMHTTPFetcherCompletionInvokedNotification
+                            object:nil
+                           handler:^BOOL(NSNotification * _Nonnull notification) {
+    GTMHTTPFetcher *noteFetcher = notification.object;
+    NSData *expectedData = [self gettysburgAddress];
+    BOOL fulfilled = [noteFetcher.downloadedData isEqual:expectedData];
+    return fulfilled;
+  }];
+
   NSString *urlString = [self localURLStringToTestFileName:kValidFileName];
   [self doFetchWithURLString:urlString cachingDatedData:YES];
 
@@ -228,6 +237,8 @@ static NSString *const kValidFileName = @"gettysburgaddress.txt";
   // cache
   NSData *originalFetchedData = [[fetchedData_ copy] autorelease];
 
+  // Wait for the kGTMHTTPFetcherCompletionInvokedNotification notification.
+  [self waitForExpectationsWithTimeout:2.0 handler:nil];
 
   // Now fetch again so the "If-None-Match" header will be set (because
   // we're calling setFetchHistory: below) and caching ON, and verify that we

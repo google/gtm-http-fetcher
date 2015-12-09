@@ -191,9 +191,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
 
   [chunkFetcher_ release];
   [locationURL_ release];
-#if NS_BLOCKS_AVAILABLE
   [locationChangeBlock_ release];
-#endif
   [uploadData_ release];
   [uploadFileHandle_ release];
   [uploadMIMEType_ release];
@@ -271,7 +269,6 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
                      didFinishSelector:NULL];
 }
 
-#if NS_BLOCKS_AVAILABLE
 - (BOOL)beginFetchWithCompletionHandler:(void (^)(NSData *data, NSError *error))handler {
   // we don't want to call into the delegate's completion block immediately
   // after the finish of the initial connection (the delegate is called only
@@ -301,7 +298,6 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected;
   }];
   return flag;
 }
-#endif
 
 - (void)connection:(NSURLConnection *)connection
    didSendBodyData:(NSInteger)bytesWritten
@@ -345,13 +341,11 @@ totalBytesExpectedToSend:totalBytesExpectedToWrite];
                         error:error];
   }
 
-#if NS_BLOCKS_AVAILABLE
   if (completionBlock_) {
     completionBlock_(data, error);
   }
 
   [self setLocationChangeBlock:nil];
-#endif
 
   [self releaseCallbacks];
 }
@@ -745,11 +739,9 @@ totalBytesExpectedToSend:0];
                                     error:error];
   }
 
-#if NS_BLOCKS_AVAILABLE
   if (retryBlock_) {
     willRetry = retryBlock_(willRetry, error);
   }
-#endif
 
   if (willRetry) {
     // change the request being retried into a query to the server to
@@ -804,11 +796,9 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
        totalBytesExpectedToWrite:totalBytesExpected];
   }
 
-#if NS_BLOCKS_AVAILABLE
   if (sentDataBlock_) {
     sentDataBlock_(bytesSent, totalBytesSent, totalBytesExpected);
   }
-#endif
 }
 
 #pragma mark -
@@ -853,11 +843,8 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
             uploadMIMEType = uploadMIMEType_,
             chunkSize = chunkSize_,
             currentOffset = currentOffset_,
-            chunkFetcher = chunkFetcher_;
-
-#if NS_BLOCKS_AVAILABLE
-@synthesize locationChangeBlock = locationChangeBlock_;
-#endif
+            chunkFetcher = chunkFetcher_,
+            locationChangeBlock = locationChangeBlock_;
 
 @dynamic activeFetcher;
 @dynamic responseHeaders;
@@ -897,12 +884,7 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
 
 - (SEL)sentDataSelector {
   // overrides the superclass
-#if NS_BLOCKS_AVAILABLE
-  BOOL hasSentDataBlock = (sentDataBlock_ != NULL);
-#else
-  BOOL hasSentDataBlock = NO;
-#endif
-  if ((delegateSentDataSEL_ || hasSentDataBlock) && !needsManualProgress_) {
+  if ((delegateSentDataSEL_ || sentDataBlock_) && !needsManualProgress_) {
     return @selector(uploadFetcher:didSendBytes:totalBytesSent:totalBytesExpectedToSend:);
   } else {
     return NULL;
@@ -931,11 +913,9 @@ totalBytesExpectedToSend:(NSInteger)totalBytesExpected {
     [locationURL_ release];
     locationURL_ = [url retain];
 
-#if NS_BLOCKS_AVAILABLE
     if (locationChangeBlock_) {
       locationChangeBlock_(url);
     }
-#endif
   }
 }
 @end
