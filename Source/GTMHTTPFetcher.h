@@ -347,6 +347,7 @@ enum {
   kGTMHTTPFetcherErrorAuthenticationChallengeFailed = -2,
   kGTMHTTPFetcherErrorChunkUploadFailed = -3,
   kGTMHTTPFetcherErrorFileHandleException = -4,
+  kGTMHTTPFetcherErrorInsecureRequest = -5,
   kGTMHTTPFetcherErrorBackgroundExpiration = -6,
 
   // The code kGTMHTTPFetcherErrorAuthorizationFailed (-5) has been removed;

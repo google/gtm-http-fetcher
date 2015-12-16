@@ -336,6 +336,9 @@ static NSString *const kCallbackError = @"error";
         }
       }
       if (!allowRequest) {
+        error = [NSError errorWithDomain:kGTMHTTPFetcherErrorDomain
+                                    code:kGTMHTTPFetcherErrorInsecureRequest
+                                userInfo:nil];
         goto CannotBeginFetch;
       }
     }  // !isSecure
