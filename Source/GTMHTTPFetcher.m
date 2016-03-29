@@ -13,15 +13,21 @@
  * limitations under the License.
  */
 
-//
-//  GTMHTTPFetcher.m
-//
-
-#if (!TARGET_OS_IPHONE && defined(MAC_OS_X_VERSION_10_11) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_11) \
-    || (TARGET_OS_IPHONE && defined(__IPHONE_9_0) && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_9_0)
 // GTMHTTPFetcher relies on NSURLConnection, which is unavailable for apps built with minimum
 // targets of iOS 9 and OS X 10.11.
-#error GTMHTTPFetcher is deprecated on iOS 9/OS X 10.11; use GTMSessionFetcher instead
+//
+// This fetcher class is deprecated under the OS X 10.12/iOS 10 SDKs unless targeting
+// OS X 10.8 or iOS 6.
+#if (!TARGET_OS_IPHONE && defined(MAC_OS_X_VERSION_10_12)     \
+    && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_12 \
+    && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_9)
+#error GTMHTTPFetcher is deprecated; use GTMSessionFetcher instead
+#endif
+
+#if (TARGET_OS_IPHONE && defined(__IPHONE_10_0)         \
+    && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_10_0 \
+    && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_7_0)
+#error GTMHTTPFetcher is deprecated; use GTMSessionFetcher instead
 #endif
 
 #import "GTMHTTPFetcher.h"
@@ -151,6 +157,15 @@ static NSString *const kCallbackError = @"error";
     if (cookieStorageClass) {
       gGTMFetcherStaticCookieStorage = [[cookieStorageClass alloc] init];
     }
+
+#if DEBUG
+#if (!TARGET_OS_IPHONE && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_9) \
+    || (TARGET_OS_IPHONE && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_7_0)
+    NSLog(@"GTMHTTPFetcher is deprecated and should be updated to GTMSessionFetcher"
+          @" (inside bundle %@)",
+          [NSBundle bundleForClass:self].bundlePath.lastPathComponent);
+#endif
+#endif
   }
 }
 
