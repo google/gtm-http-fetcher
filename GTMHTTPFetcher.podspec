@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   DESC
   
   s.ios.deployment_target = '4.0'
-  s.osx.deployment_target = '10.4'
+  s.osx.deployment_target = '10.6'
 
   s.requires_arc = false
   
@@ -45,6 +45,7 @@ Pod::Spec.new do |s|
   s.subspec 'ResumableUpload' do |sp|
     sp.source_files = 'Source/GTMHTTPUploadFetcher.{h,m}'
     sp.dependency 'GTMHTTPFetcher/Fetcher', "#{s.version}"
+    sp.dependency 'GTMHTTPFetcher/Service', "#{s.version}"
   end
 
   s.subspec 'Service' do |sp|
