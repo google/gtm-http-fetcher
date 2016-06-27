@@ -253,6 +253,9 @@ static NSString *const kCallbackError = @"error";
   [initialRequestDate_ release];
   [comment_ release];
   [log_ release];
+  [allowedInsecureSchemes_ release];
+  // releaseCallbacks nilifies delegate_ making this release a no-op if releaseCallbacks was called
+  [delegate_ release];
 #if !STRIP_GTM_FETCH_LOGGING
   [redirectedFromURL_ release];
   [logRequestBody_ release];
