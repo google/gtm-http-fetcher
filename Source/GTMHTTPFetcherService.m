@@ -71,6 +71,7 @@
   [credential_ release];
   [proxyCredential_ release];
   [authorizer_ release];
+  [allowedInsecureSchemes_ release];
 
   [super dealloc];
 }
