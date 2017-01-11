@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name        = 'GTMHTTPFetcher'
-  s.version     = '2.0.0'
+  s.version     = '2.0.1'
   s.authors     = 'Google Inc.'
   s.license     = { :type => 'Apache', :file => 'LICENSE' }
   s.homepage    = 'https://github.com/google/gtm-http-fetcher'
@@ -14,12 +14,12 @@ Pod::Spec.new do |s|
   wrapper on NSURLConnection, so its behavior is asynchronous
   and uses operating-system settings on iOS and Mac OS X.
   DESC
-  
+
   s.ios.deployment_target = '4.0'
   s.osx.deployment_target = '10.6'
 
   s.requires_arc = false
-  
+
   s.subspec 'Fetcher' do |sp|
     sp.source_files = 'Source/GTMHTTPFetcher.{h,m}'
   end
@@ -28,20 +28,20 @@ Pod::Spec.new do |s|
     sp.source_files = 'Source/GTMHTTPFetcherLogging.{h,m}'
     sp.dependency 'GTMHTTPFetcher/Fetcher', "#{s.version}"
   end
-  
+
   s.subspec 'LogViewController' do |sp|
     sp.platform = :ios
     sp.source_files = 'Source/GTMHTTPFetcherLogViewController.{h,m}'
     sp.dependency 'GTMHTTPFetcher/Logging', "#{s.version}"
   end
-  
+
   s.subspec 'MIME' do |sp|
     sp.source_files =
       'Source/GTMMIMEDocument.{h,m}',
       'Source/GTMGatherInputStream.{h,m}'
     sp.dependency 'GTMHTTPFetcher/Fetcher', "#{s.version}"
   end
-  
+
   s.subspec 'ResumableUpload' do |sp|
     sp.source_files = 'Source/GTMHTTPUploadFetcher.{h,m}'
     sp.dependency 'GTMHTTPFetcher/Fetcher', "#{s.version}"
