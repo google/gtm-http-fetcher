@@ -311,7 +311,7 @@ static NSString *const kCallbackError = @"error";
     //
     // file: and data: schemes are usually safe if they are hardcoded in the client or provided
     // by a trusted source, but since it's fairly rare to need them, it's safest to make clients
-    // explicitly whitelist them.
+    // explicitly allow them.
     NSString *requestScheme = [requestURL scheme];
     BOOL isSecure = ([requestScheme caseInsensitiveCompare:@"https"] == NSOrderedSame);
     if (!isSecure) {
